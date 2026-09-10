@@ -125,13 +125,21 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
    Fit a final CIR model on the Ridge meta-predictions against ground truth.
 
 ### Track B: Binary Classification (ROC-AUC / LogLoss)
-1. **Greedy Forward Hill Climbing**:
+1. **Spearman Diversity Screening ($\rho \le 0.998$)**:
+   Before adding any model to an existing blend, compute its Spearman rank correlation $\rho$. If $\rho > 0.998$, reject as collinear/redundant. Only sweep weights on diverse candidates ($\rho \le 0.998$).
+2. **Inductive Bias Pairing (Neural Networks + Trees)**:
+   Tree ensembles (LightGBM, CatBoost, XGBoost) share axis-aligned step-cut inductive biases and saturate. Pair them with continuous manifold models (PyTorch RealMLP, TabM) at 10%–20% weight to cancel tree boundary artifacts.
+3. **Avoid the Candidate Pooling Fallacy**:
+   Never average multiple diverse candidates into an unweighted pool before blending—averaging cancels their individual disagreements and drives correlation to $>0.999$. Blend diverse candidates individually or via regularized Ridge/Logistic regression.
+4. **Plateau Center-Selection**:
+   When sweeping candidate weights across a flat score plateau (e.g. 10%, 15%, 20% all tie), always choose the center of the plateau (15%) rather than the edge to maximize safety against private leaderboard distribution shifts.
+5. **Greedy Forward Hill Climbing**:
    Filter redundant models by greedily accumulating models that improve honest OOF AUC.
-2. **Fold-Wise Ordinal Rank Probability Calibration**:
+6. **Fold-Wise Ordinal Rank Probability Calibration**:
    Map OOF predictions within each fold to common quantile ranks and replace with empirical rank means.
-3. **Logit-Space Transform**:
+7. **Logit-Space Transform**:
    $$z = \text{clip}\left(\ln \frac{p}{1 - p}, -30.0, 30.0\right)$$
-4. **$L_2$-Regularized Logistic Regression Meta-Learner**:
+8. **$L_2$-Regularized Logistic Regression Meta-Learner**:
    Fit a strongly regularized Logistic Regression (`C=0.01`, solver `lbfgs` / `qn`) on the logit features.
 
 ---

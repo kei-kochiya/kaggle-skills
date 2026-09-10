@@ -196,3 +196,89 @@ def greedy_forward_selection(oof_matrix, y_true, model_names, max_models=150, mi
     return [model_names[i] for i in selected_idx]
 ```
 
+---
+
+## 5. The Spearman Rank Correlation Selection Rule ($\rho \le 0.998$)
+
+In late-stage competitions or when constructing mega-ensembles, testing every candidate model on cross-validation or live submissions wastes time and submissions. AUC and rank-based metrics depend strictly on relative ordering. 
+
+### The Mathematical Screening Rule
+Compute the Spearman rank correlation $\rho$ of each candidate model $M_k$ against the current best blend $E$:
+$$\rho(M_k, E) = 1 - \frac{6 \sum_{i=1}^N (R_{k, i} - R_{E, i})^2}{N(N^2 - 1)}$$
+
+```python
+from scipy.stats import spearmanr, rankdata
+
+def evaluate_candidate_diversity(candidate_preds, current_blend_preds, threshold=0.998):
+    """
+    Screens whether a candidate model provides sufficient structural diversity
+    to move a saturated ensemble score.
+    """
+    r_cand = rankdata(candidate_preds)
+    r_blend = rankdata(current_blend_preds)
+    
+    rho = spearmanr(r_cand, r_blend).statistic
+    is_diverse = (rho <= threshold)
+    
+    print(f"Spearman Correlation vs. Current Blend: {rho:.5f}")
+    if is_diverse:
+        print(f"  -> ACCEPT: Diverse candidate ({rho:.5f} <= {threshold}). Eligible for weight sweep.")
+    else:
+        print(f"  -> REJECT: Redundant model ({rho:.5f} > {threshold}). Disagreements are insufficient to move leaderboard.")
+    return is_diverse, rho
+```
+
+**Rule of Thumb**:
+- $\rho > 0.998$: **Collinear / Redundant**. Adding this model at any weight will not shift the score beyond rounding error.
+- $\rho \in [0.995, 0.998]$: **Diverse Candidate**. Worth sweeping weights between $5\%$ and $20\%$.
+- $\rho < 0.995$: **Highly Orthogonal Anchor**. Prime candidate for substantial weight ($15\% - 30\%$).
+
+---
+
+## 6. Inductive Bias Pairing: Neural Networks vs. Decision Trees
+
+A frequent failure mode in competitive tabular ML is assembling 10–15 tree-based models (LightGBM, CatBoost, XGBoost, HistGradientBoosting). Even with different hyperparameters and feature subsets, tree models share the same fundamental inductive bias: **orthogonal piecewise-constant hyperplanes with step-cut discontinuities**.
+
+### The Neural Manifold Lift
+Deep Tabular Neural Networks (e.g. PyTorch RealMLP, TabNet, ResNet, TabM) learn **continuous, smooth, curved decision boundaries**.
+- A tabular neural network often scores **lower** as a standalone model (e.g., $0.94595$ vs. $0.94640$ for GBDT).
+- However, because its errors occur in completely different regions of the feature space, its Spearman correlation against a saturated GBDT blend is typically **$\rho \approx 0.9960 - 0.9975$**.
+- Adding $10\% - 20\%$ of a continuous neural manifold model into a saturated tree ensemble consistently provides the decisive $+0.00002$ to $+0.00005$ breakthrough.
+
+```python
+# Blending continuous neural manifold with discrete GBDT tree consensus
+# r_trees: percent ranks of top GBDT ensemble
+# r_realmlp: percent ranks of PyTorch RealMLP neural network
+final_rank = 0.85 * r_trees + 0.15 * r_realmlp
+```
+
+---
+
+## 7. The Candidate Pooling Fallacy & Plateau Center-Selection
+
+Two critical empirical ensembling rules discovered in live Kaggle competitions:
+
+### A. The "Candidate Pooling Fallacy"
+When you have 4–5 diverse models that each correlate $\rho \approx 0.9965 - 0.9975$ with the current blend, a common instinct is to average them together into a "diversity sub-ensemble" and blend that pool into the main model.
+- **Why this fails**: The disagreements of diverse models are primarily *with each other*. Averaging them together cancels their unique individual signals, causing the pool's correlation against the master blend to jump to **$\rho > 0.9990$** (higher than any single member!).
+- **Actionable Rule**: Never pre-pool diverse models into an unweighted average. Evaluate and inject each diverse model individually, or optimize their joint weights simultaneously via constrained optimization / Ridge regression.
+
+### B. The Plateau Center-Selection Rule
+When sweeping candidate weights (e.g. testing $0\%, 10\%, 15\%, 20\%, 25\%$), public leaderboard scores often exhibit a flat plateau:
+- $0\%$ RealMLP: $0.94643$
+- $10\%$ RealMLP: $0.94644$ (Tie)
+- **$15\%$ RealMLP**: **$0.94644$ (Center of Plateau — PICK THIS)**
+- $20\%$ RealMLP: $0.94644$ (Tie)
+- $25\%$ RealMLP: $0.94643$ (Decline)
+
+> [!TIP]
+> **Pick the middle of a plateau, not the edge**: If $10\%$, $15\%$, and $20\%$ all tie on the public leaderboard, reporting $10\%$ or $20\%$ is an artifact of discrete sampling. The center ($15\%$) sits furthest from the performance cliffs on both sides, providing maximum safety margin against distribution shifts and shakeout on the private leaderboard.
+
+---
+
+## 8. Dynamic Public Source Auditing & Timestamp Tracking
+
+When participating in competitions where public notebooks contribute components:
+1. **GBDT Histogram Non-Determinism**: Because GPU and multi-threaded CPU histogram binning in GBDT libraries are not bit-deterministic, upstream authors re-running notebooks create slight shifts in predictions ($10^{-5}$ scale).
+2. **Timestamped Blend Measurements**: A blend weight measured against public sources is only valid for the specific version measured. If upstream sources improve, a candidate weight that yielded $+0.00000$ yesterday can yield $+0.00002$ today against the updated baseline. Always re-download upstream sources when conducting fine sweeps.
+
