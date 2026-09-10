@@ -48,22 +48,24 @@ kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
 ---
 
-## 3. Phase 2: Exploratory Data Analysis & Synthetic Formula Discovery
+## 3. Phase 2: Exploratory Data Forensics (DS & DA Playbook)
 
-In synthetic datasets (common in Kaggle Playground), target values often follow a linear or polynomial formula with added Gaussian or t-distributed noise.
+Refer to [`references/eda_data_forensics.md`](./references/eda_data_forensics.md) for the complete 7-pillar forensic methodology:
 
-### Formula Discovery Checklist:
-1. **Fit an unregularized Linear Regression or OLS**:
-   ```python
-   from sklearn.linear_model import LinearRegression
-   lr = LinearRegression().fit(X_train[num_cols], y_train)
-   print("Coefficients:", dict(zip(num_cols, lr.coef_)))
-   print("Intercept:", lr.intercept_)
-   ```
-2. **Residual Inspection**:
-   Calculate residuals $e_i = y_i - \hat{y}_i$. Plot residuals against each categorical column. If residuals shift consistently by a constant amount per category, those categories represent discrete additive formula offsets!
-3. **Synthetic Feature Injection**:
-   Inject the reconstructed formula directly as a high-signal meta-feature (`feature_formula`).
+1. **Adversarial Validation (Train vs. Test Shift)**:
+   Train LightGBM to distinguish Train vs. Test. If $\text{ROC-AUC} > 0.65$, isolate and prune or neutralize the drifting features.
+2. **Synthetic vs. Original Data Forensics**:
+   Query original datasets via `cKDTree` to measure generator perturbation distance distributions and detect frequency oversampling ratios.
+3. **Bivariate Target Profiling & Step-Function Discovery**:
+   Discretize continuous variables into high-resolution quantile bins and plot empirical target rates with 95% Wilson confidence intervals to uncover non-linear thresholds.
+4. **Mantissa, Rounding & Benford's Law Forensics**:
+   Audit decimal fractions (`frac = x - floor(x)`) and leading-digit distributions to detect synthetic rounding artifacts.
+5. **Domain Equation Residual Auditing**:
+   Calculate residuals $e = y_{\text{domain}} - f(X)$ (e.g. $\text{TotalCharges} - \text{tenure} \times \text{MonthlyCharges}$). Correlate residuals with the target to isolate hidden business signals.
+6. **Categorical Interaction Screening**:
+   Screen pairwise and three-way combinations via Chi-square contingency table divergence to isolate the highest-signal cross-features.
+7. **Synthetic Formula Discovery**:
+   Fit an unregularized Linear Regression or OLS to recover additive linear formula offsets across discrete categories.
 
 ---
 
@@ -135,6 +137,7 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 ---
 
 ## 7. References & Deep Dives
+- [Exploratory Data Forensics (DS & DA Playbook)](./references/eda_data_forensics.md)
 - [Feature Engineering Toolkit](./references/feature_engineering.md)
 - [Leak-Free Multi-Agg Target Encoding](./references/oof_target_encoding.md)
 - [CIR Calibration, Logit Stacking & Hill Climbing](./references/stacking_cir_ridge.md)

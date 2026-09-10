@@ -45,6 +45,7 @@ Coding agents (e.g. Antigravity, Claude Code, Cursor) automatically discover and
 | **`kaggle-competition-distiller`** | Reusable agent workflow to intake raw competition files/notebooks, reverse-engineer winning recipes, and produce Handbook entries + Agent Skills | [`.agent/skills/kaggle-competition-distiller/SKILL.md`](.agent/skills/kaggle-competition-distiller/SKILL.md) |
 
 ### Skill Cookbooks & References
+- [Exploratory Data Forensics (DS & DA Playbook)](skills/kaggle-tabular-playbook/references/eda_data_forensics.md): Adversarial validation, generator reverse-engineering, Wilson CI bivariate profiling, mantissa dissection, domain residual audits, and Chi-square interaction screening.
 - [Feature Engineering Toolkit](skills/kaggle-tabular-playbook/references/feature_engineering.md): Snap mapping, Radix interactions, modulo digit extraction, cKDTree priors, Benford's Law anomaly detection.
 - [Leak-Free Multi-Agg Target Encoding](skills/kaggle-tabular-playbook/references/oof_target_encoding.md): Nested 5×5 fold-safe empirical Bayes target encoding across 10 statistical aggregations.
 - [Ensembling, Calibration & Hill Climbing](skills/kaggle-tabular-playbook/references/stacking_cir_ridge.md): Centered Isotonic Regression (CIR), Ridge regression, fold-wise ordinal rank calibration, and greedy forward selection.
