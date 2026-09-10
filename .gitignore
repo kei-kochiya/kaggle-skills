@@ -1,0 +1,41 @@
+# ==============================================================================
+# Git Ignore Rules: Kaggle Handbook & Agent Skills
+# ==============================================================================
+
+# Competitions directory (contains multi-gigabyte datasets, OOF arrays, submissions)
+Competition/
+competition/
+comp/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.ipynb_checkpoints/
+
+# Environment directories
+.venv/
+venv/
+env/
+ENV/
+
+# Large data files and binary arrays
+*.zip
+*.tar.gz
+*.7z
+*.rar
+*.npy
+*.npz
+*.parquet
+*.feather
+*.h5
+
+# OS & Editor metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
