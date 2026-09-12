@@ -140,7 +140,11 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 7. **Logit-Space Transform**:
    $$z = \text{clip}\left(\ln \frac{p}{1 - p}, -30.0, 30.0\right)$$
 8. **$L_2$-Regularized Logistic Regression Meta-Learner**:
-   Fit a strongly regularized Logistic Regression (`C=0.01`, solver `lbfgs` / `qn`) on the logit features.
+   Fit an $L_2$ Logistic Regression (`C=1.0` or `C=0.01`, `class_weight=None` to preserve rank ordering) on the logit features.
+9. **Percentile Rank Averaging Across Ensemblers**:
+   When combining ensemblers operating on different probability scales (e.g. Logit Stacker calibrated at base rate $~0.20$ vs. Hill Climbing compressed around $0.50$), convert predictions to empirical uniform percentiles via `rankdata(p) / len(p)` before weighted averaging.
+10. **Synchronous Fold Concatenation & Drift Pruning**:
+   Safely inject original/external datasets by splitting synchronously into $K$ Stratified folds and evaluating solely on synthetic validation splits. Branch parallel models omitting features with high adversarial drift ($\text{AUC} > 0.65$, e.g. `Driver`).
 
 ---
 
@@ -149,5 +153,6 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 - [Feature Engineering Toolkit](./references/feature_engineering.md)
 - [Leak-Free Multi-Agg Target Encoding](./references/oof_target_encoding.md)
 - [CIR Calibration, Logit Stacking & Hill Climbing](./references/stacking_cir_ridge.md)
+- [Logit Stacking, Rank Averaging & Synchronous Fold Protocol](./references/logit_stacking_rank_blend.md)
 - [Autonomous Multi-LLM Competitive Workflow](../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
 

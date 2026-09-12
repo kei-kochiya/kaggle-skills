@@ -6,6 +6,9 @@
 Competition/
 competition/
 comp/
+Playground/
+playground/
+scratch/
 
 # Python bytecode & cache
 __pycache__/
