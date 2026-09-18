@@ -146,4 +146,4 @@ digraph rl_pipeline {
 
 ## Complete Competition Case Studies
 
-- **Orbit Wars (1st Place)**: [Deep Dive Post-Mortem](../../Handbook/reinforcement-learning/orbit-wars.md) — 200M Transformer, 15B steps, Rust engine acceleration, NF4-LSQ compression, dynamic int8 CPU serving, and fallback cascades.
+- **Orbit Wars (1st Place)**: [Deep Dive Post-Mortem](../../../Handbook/reinforcement-learning/orbit-wars.md) — 200M Transformer, 15B steps, Rust engine acceleration, NF4-LSQ compression, dynamic int8 CPU serving, and fallback cascades.
