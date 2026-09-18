@@ -234,3 +234,45 @@ class LeagueMatchmaker:
 Instead of updating the teacher anchor in discrete jumps, update an Exponential Moving Average (EMA) teacher continuously:
 $$\theta_{\text{teacher}} \leftarrow \tau \theta_{\text{teacher}} + (1 - \tau) \theta_{\text{student}}, \quad \tau = 0.999$$
 This smooths out policy jitter and prevents advantage variance spikes during high-entropy exploration phases.
+
+---
+
+## 8. Preventing Homogeneous Self-Play Blind Spots: The Maze Crawler Lesson
+
+A critical failure mode in competitive self-play is **Population Homogeneity Blindness**, demonstrated in the *Kaggle Maze Crawler* competition (3rd Place Daniel Bekker):
+
+### The Phenomenon:
+1. When an agent trains strictly against itself or its past checkpoints, the population converges to an internally consistent equilibrium.
+2. In Maze Crawler, this resulted in an agent that perfected long-term energy farming and survival, because both players in self-play played politely.
+3. However, the agent was completely blind to aggressive combat rushes: the 1st place solution (Maksim Savelev) banked sufficient energy, charged across the maze, dropped a 300-energy unit, and forced a lethal collision at turn 120. Because the RL agent had never faced an opponent whose objective was an immediate collision rush, its value critic assigned near-zero risk to approaching enemy bases.
+
+### The Fix: Adversarial League Exploiters
+To immunize the main policy against predatory rushes, allocate a partition of training rollouts to **dedicated exploiter agents**:
+
+```python
+class AdversarialLeagueTrainer:
+    """
+    Maintains an active league containing:
+    1. Main Agent (optimizes global win condition)
+    2. Exploiter Agents (explicitly trained to defeat the Main Agent using edge-case policies)
+    3. Heuristic Sparring Bots (rule-based combat rushers, greedy miners)
+    """
+    def __init__(self, main_policy, exploiter_policies, heuristic_bots):
+        self.main_policy = main_policy
+        self.exploiters = exploiter_policies # e.g. CombatRusherPolicy
+        self.heuristics = heuristic_bots     # e.g. ScoredBFSRushBot
+        
+    def get_opponent_distribution(self):
+        # 50% Main Agent self-play (stabilizes global meta)
+        # 25% Historical Checkpoints (prevents catastrophic forgetting)
+        # 15% Heuristic Sparring Bots (grounds policy against rule-based exploits)
+        # 10% Active Adversarial Exploiter (attacks policy blind spots)
+        return {
+            "self": 0.50,
+            "historical": 0.25,
+            "heuristic": 0.15,
+            "exploiter": 0.10
+        }
+```
+This forces the value function to learn that close proximity to an aggressive opponent without defensive unit deployment is an immediate failure state, closing the gap between self-play perfection and open-tournament robustness.
+

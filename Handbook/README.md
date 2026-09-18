@@ -25,6 +25,7 @@ This repository serves two interconnected purposes:
 | Competition | Target & Environment | Key Breakthroughs & Winning Techniques | Outcome / Scale | Link |
 | :--- | :--- | :--- | :--- | :--- |
 | **Kaggle Orbit Wars** | Multi-Agent 2D Orbital Space Conquest (2-Player & 4-Player) | • Sutton's Bitter Lesson: 200M-parameter Transformer trained for 15B steps<br>• Single-pass multi-player forward pass (evaluates all players in 1 pass, 2-4x speedup)<br>• High-performance Rust simulator (PyO3 + Rayon) reaching 120,000+ steps/sec with zero-copy pinned buffers<br>• Sub-100MiB submission packing via 4-bit NormalFloat (NF4-LSQ) group quantization (90.7MiB)<br>• Multi-tier serving cascade: dynamic int8 CPU inference + automatic 5M fallback when overage < 1.0s | 🥇 **1st Place Gold**<br>15 Billion Steps<br>32× B200 GPUs | [Deep Dive](reinforcement-learning/orbit-wars.md) |
+| **Kaggle Maze Crawler** | 2-Player Partially Observable Infinite Scrolling Maze RTS | • Heuristic Supremacy vs. Deep RL: 1st place scored BFS vs 3rd place PPO self-play<br>• Jump-aware BFS movement with arrival-time Steps-Before-Death (`sbd`) score steering<br>• One-shot economy latch (`ENERGY_CAP = 3000`): stop farming, shift 100% to hunting<br>• Active combat win condition: 300-energy Miner drop behind advance (`dist=5`) + lookahead survival<br>• The Homogeneous Self-Play Trap: why pure self-play RL created an energy-farming blind spot | 🥇 **1st Place Gold** (Heuristic)<br>🥉 **3rd Place Bronze** (Deep RL)<br>1v1 RTS Simulation | [Deep Dive](reinforcement-learning/maze-crawler.md) |
 
 *(More competition writeups will be added as new competitions are unpacked into `Competition/`)*
 
@@ -56,7 +57,8 @@ Handbook/
 │   ├── playground-s6e5-f1-pit-stops.md
 │   └── playground-s6e9-will-buy-ev.md
 ├── reinforcement-learning/            # Multi-agent RL & simulation challenges
-│   └── orbit-wars.md                  # 1st Place Orbit Wars 200M Transformer & Rust engine
+│   ├── orbit-wars.md                  # 1st–10th Place Orbit Wars: 200M Transformer, Rust, JAX, NF4
+│   └── maze-crawler.md                # 1st Place Scored BFS Heuristics vs. 3rd Place Deep RL & JAX
 ├── cv/                                # Computer vision (Classification, Detection, Segmentation)
 ├── nlp/                               # Natural language processing, LLMs, and retrieval
 ├── time_series/                       # Forecasting, financial, and temporal series
