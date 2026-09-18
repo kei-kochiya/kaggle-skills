@@ -132,3 +132,105 @@ When competing in 3+ player games, replace pure self-play with an **Agent League
 - **Standard Protocol**:
   - **Phase 1 (Exploration & Physics Learning)**: Train **unmasked**. Let the model fail and internalize environment dynamics.
   - **Phase 2 (Competitive Fine-Tuning & Test Time)**: Enable the action mask during the final 5% of training and enforce it during test-time inference.
+
+---
+
+## 5. Behavioral Cloning Warm-Start & Imitation-to-RL Curricula
+
+As demonstrated by `simjeg` (2nd Place) and `TonyK` (5th Place), starting RL from randomly initialized policies in environments with sparse rewards or complex continuous physics can waste millions of compute steps wandering through uninformative states.
+
+```
+                      PROGRESSIVE IMITATION-TO-RL CURRICULUM
+                      
+ Stage 1: Tournament Replay Ingestion (Top-10 Human / Bot Games)
+                            |
+                            v
+ Stage 2: Supervised Behavioral Cloning (BC)
+  • Minimize Cross-Entropy Loss: L_BC = -log π_θ(a_expert | s)
+  • Reaches ~Top 10 Elo baseline in hours with zero simulator stepping
+                            |
+                            v
+ Stage 3: RL Policy Fine-Tuning (PPO / Asynchronous IMPALA)
+  • Initialize actor-critic trunk from BC weights
+  • Fine-tune with clipped surrogate objective and low learning rate (1e-5)
+  • Adds self-play exploration beyond the expert replay distribution
+                            |
+                            v
+ Stage 4: From-Scratch RL Realignment (Optional Final Polish)
+  • Train final submission from scratch once hyperparameters & architectures
+    are proven, eliminating any suboptimal habits copied from expert replays
+```
+
+```python
+def behavioral_cloning_epoch(model, dataloader, optimizer):
+    model.train()
+    total_loss = 0.0
+    for batch in dataloader:
+        obs, expert_actions = batch["obs"], batch["action"]
+        
+        # Forward pass through actor policy
+        action_dist = model.get_action_distribution(obs)
+        
+        # Supervised negative log-likelihood loss
+        loss = -action_dist.log_prob(expert_actions).mean()
+        
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        optimizer.step()
+        total_loss += loss.item()
+    return total_loss / len(dataloader)
+```
+
+---
+
+## 6. Step-Conditioned Anti-Stall Reward Shaping
+
+The undiscounted $\gamma=1.0$ stalling crisis occurs because an agent that has a 95% win probability receives identical terminal reward whether it wins on turn 100 or turn 500.
+
+`simjeg`'s battle-tested solution applies a **step-conditioned piecewise terminal reward**:
+
+$$R_{\text{terminal}}(t) = \begin{cases} +1.0 & \text{if Player Wins and } t < T_{\text{cutoff}} \\ +0.5 & \text{if Player Wins and } t \ge T_{\text{cutoff}} \\ -1.0 & \text{if Player Loses} \end{cases}$$
+
+Where $T_{\text{cutoff}} = 500$ (or roughly half the max game horizon).
+*Why this works*:
+1. Does not distort intermediate policy gradients with noisy step penalties ($r_t = -0.001$ can sometimes cause suicidal rushes).
+2. Creates an unmistakable gradient favoring early, decisive planetary annihilation over passive hoarding.
+
+---
+
+## 7. Frozen Historical Opponent League Pools & Polyak Teachers
+
+In multi-agent environments with $N \ge 3$ players, policies trained purely against current self-play rapidly develop blind spots to earlier strategies (e.g. early rush attacks). `TonyK` (5th Place) and AlphaStar solve this with a **Frozen Opponent Matchmaking Pool**:
+
+```python
+class LeagueMatchmaker:
+    def __init__(self, main_policy, max_frozen=20):
+        self.main_policy = main_policy
+        self.frozen_checkpoints = [] # Pool of (step_count, model_weights)
+        self.max_frozen = max_frozen
+
+    def sample_match_opponents(self):
+        # 50% chance: Self-play against current policy
+        # 35% chance: Play against a random historical frozen checkpoint
+        # 15% chance: Play against the earliest 'rush-bot' baseline
+        r = np.random.rand()
+        if r < 0.50 or len(self.frozen_checkpoints) == 0:
+            return self.main_policy
+        elif r < 0.85:
+            idx = np.random.randint(0, len(self.frozen_checkpoints))
+            return self.frozen_checkpoints[idx]
+        else:
+            return self.frozen_checkpoints[0] # Earliest anchor
+
+    def maybe_freeze_checkpoint(self, step, model):
+        if step % 50_000_000 == 0:
+            if len(self.frozen_checkpoints) >= self.max_frozen:
+                self.frozen_checkpoints.pop(1) # Keep earliest anchor, rotate middle
+            self.frozen_checkpoints.append(copy.deepcopy(model.state_dict()))
+```
+
+### Delayed Moving Polyak Teacher
+Instead of updating the teacher anchor in discrete jumps, update an Exponential Moving Average (EMA) teacher continuously:
+$$\theta_{\text{teacher}} \leftarrow \tau \theta_{\text{teacher}} + (1 - \tau) \theta_{\text{student}}, \quad \tau = 0.999$$
+This smooths out policy jitter and prevents advantage variance spikes during high-entropy exploration phases.

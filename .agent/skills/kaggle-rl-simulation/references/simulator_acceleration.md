@@ -280,11 +280,95 @@ fn test_kaggle_tournament_replay_parity() {
 
 ---
 
-## 5. Acceleration Checklist & Benchmarking SOP
+## 5. End-to-End JAX JIT-Compiled Simulation Pipelines
+
+As demonstrated by the 3rd, 8th, 9th, and 10th place solutions (notably Boey's 9th place *"End-to-end JAX PPO"* and Bradley's 8th place *"Ender for <$200"*), an alternative to writing compiled C++/Rust engines is to implement the **entire game simulation natively in JAX**:
+
+```
+                       END-TO-END JAX JIT TRAINING LOOP
+                       
+ +-----------------------------------------------------------------------------+
+ |                         SINGLE GPU / TPU ACCELERATOR                        |
+ |                                                                             |
+ |  [jax.vmap Vectorized States: 4096 Environments]                            |
+ |                           |                                                 |
+ |                           v                                                 |
+ |  [Environment Step: Trajectory Physics, Combat & Colony Production in JAX]  |
+ |                           |                                                 |
+ |                           v                                                 |
+ |  [Observation Packing & Action Mask Generation in JAX]                      |
+ |                           |                                                 |
+ |                           v                                                 |
+ |  [Neural Network Forward Pass (Flax / Haiku Transformer)]                   |
+ |                           |                                                 |
+ |                           v                                                 |
+ |  [PPO Loss Computation & Optax Gradient Backprop]                           |
+ |                                                                             |
+ |  === FUSED TOGETHER WITH jax.jit: ZERO PCIe TRANSFER, ZERO PYTHON LOOP ===  |
+ +-----------------------------------------------------------------------------+
+```
+
+### 5.1 Pure Functional State Progression
+In JAX, state transitions are pure functions: `(state, action, rng_key) -> (next_state, obs, reward, done)`. There is zero mutable memory and zero Python-to-C FFI overhead:
+
+```python
+import jax
+import jax.numpy as jnp
+
+@jax.jit
+def env_step(state, action, rng_key):
+    # 1. Update celestial positions using vectorized Keplerian math
+    new_planet_angles = (state.planet_angles + state.planet_ang_velocities) % (2.0 * jnp.pi)
+    new_planet_pos = jnp.stack([
+        state.planet_radii * jnp.cos(new_planet_angles),
+        state.planet_radii * jnp.sin(new_planet_angles)
+    ], axis=-1)
+    
+    # 2. Vectorized fleet movements & boundary collision checks
+    new_fleet_pos = state.fleet_pos + state.fleet_vel
+    
+    # 3. Vectorized combat matrix across all planets
+    # (B, N_planets, 4) garrisons updated via jnp.where and segment sums
+    new_garrisons, new_owners = resolve_planet_combats(state, new_fleet_pos, new_planet_pos)
+    
+    # 4. Check terminal condition
+    is_terminal = check_victory_condition(new_owners)
+    
+    next_state = state.replace(
+        planet_angles=new_planet_angles,
+        planet_pos=new_planet_pos,
+        garrisons=new_garrisons,
+        owners=new_owners,
+        step=state.step + 1
+    )
+    return next_state, compute_obs(next_state), compute_reward(next_state), is_terminal
+
+# Vectorize across 4096 concurrent game instances with zero overhead
+vec_step = jax.vmap(env_step, in_axes=(0, 0, 0))
+```
+
+### 5.2 Fused Rollout & PPO Optimization Kernel
+By wrapping the multi-step rollout loop in `jax.lax.scan` and compiling the entire rollout-plus-SGD step under a single `jax.jit`, training throughput reaches **hundreds of thousands of steps per second on a single consumer GPU**, bypassing PCIe bus contention entirely.
+
+---
+
+## 6. Engine Architecture Comparison: Rust vs. JAX vs. C++
+
+| Dimension | Rust (PyO3 + Rayon) [1st Place] | JAX End-to-End [8th, 9th, 10th Place] | C++ (pybind11) [6th Place] |
+| :--- | :--- | :--- | :--- |
+| **Primary Strength** | Extreme CPU execution speed; easy integration with PyTorch/Muon multi-node DDP clusters | Zero host-device data transfer; pure GPU pipeline; automatic vectorization via `jax.vmap` | High performance; seamless integration with custom C++ search algorithms (MCTS/rollouts) |
+| **Hardware Fit** | Best for multi-node GPU clusters with high core-count CPUs (e.g. 32× B200 / AMD EPYC) | Best for single-GPU or TPU setups (<$200 budgets, e.g. single RTX 4090 or TPU v4) | Best for local workstations combining neural inference with test-time search |
+| **Development Speed** | Strict compiler guarantees, memory safety, excellent package ecosystem (Cargo) | Rapid Pythonic iteration with NumPy syntax; debugging JIT shape dynamism can be tricky | High manual memory management overhead; prone to segmentation faults |
+| **Submission Portability** | Compiles to native shared library (`.so`) packaged in Kaggle Docker image | Requires JAX runtime inside submission, or converting policy to ONNX/PyTorch for CPU serving | Compiles to native shared library (`.so`) with minimal dependencies |
+
+---
+
+## 7. Acceleration Checklist & Benchmarking SOP
 
 When implementing or optimizing a simulation engine:
 
-- [ ] **Release Mode Compilation**: Always benchmark with `cargo build --release` (`opt-level = 3`, `lto = "fat"`, `codegen-units = 1`).
-- [ ] **Single-Core Baseline vs Multi-Core Scaling**: Verify that throughput scales linearly with physical CPU cores ($\ge 0.85 \times \text{cores}$).
-- [ ] **Warmup & Thermal Cooldown**: Let CPU temperature settle between timing runs to prevent throttling noise.
+- [ ] **Release Mode Compilation**: Always benchmark Rust with `cargo build --release` (`opt-level = 3`, `lto = "fat"`, `codegen-units = 1`) or C++ with `-O3 -march=native`.
+- [ ] **JAX JIT Warmup**: In JAX pipelines, discard the first execution time (JIT compilation overhead) when profiling steady-state throughput.
+- [ ] **Single-Core Baseline vs Multi-Core Scaling**: Verify that CPU throughput scales linearly with physical CPU cores ($\ge 0.85 \times \text{cores}$).
+- [ ] **Warmup & Thermal Cooldown**: Let CPU/GPU temperature settle between timing runs to prevent throttling noise.
 - [ ] **Parity Suite Gate**: Never merge simulator optimizations without running the full Kaggle replay test suite.

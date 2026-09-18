@@ -216,3 +216,126 @@ class MultiPlayerWinProbCritic(nn.Module):
 - In **4-player matches**, use the win probability $\hat{p}_p$ as the baseline for Generalized Advantage Estimation (GAE):
   $$\delta_t^p = r_t^p + \gamma \hat{p}_{t+1}^p - \hat{p}_t^p$$
   $$\hat{A}_t^p = \sum_{l=0}^{\infty} (\gamma \lambda)^l \delta_{t+l}^p$$
+
+---
+
+## 5. Relational Edge-Attention for Spatial Networks
+
+As demonstrated by the 6th place solution (`flg`), standard self-attention $\text{Softmax}\left(\frac{Q K^T}{\sqrt{d}}\right)$ calculates node-to-node attention strictly from independent entity features, forcing the model to re-learn pairwise geometric relations implicitly.
+
+**Relational Edge-Attention** directly injects precomputed or learned pairwise edge features $\mathbf{E} \in \mathbb{R}^{B \times N \times N \times D_e}$ into the attention logits:
+
+```
+                      RELATIONAL EDGE-ATTENTION MECHANISM
+                      
+ [Query Matrix Q_i]   [Key Matrix K_j]        [Pairwise Edge Tensor E_{i,j}]
+         |                   |                   (Flight time, solar obstruction,
+         +---------+---------+                    defensive garrison forecast)
+                   |                                           |
+                   v                                           v
+       [Dot Product: Q_i · K_j^T / √d]                [Linear Projection: W_e E]
+                   |                                           |
+                   +---------------------+---------------------+
+                                         |
+                                         v
+                         [Biased Logits: A_{i,j} + W_e E_{i,j}]
+                                         |
+                                         v
+                                      Softmax
+```
+
+```python
+class RelationalEdgeAttention(nn.Module):
+    def __init__(self, embed_dim=256, n_heads=8, edge_dim=16):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.n_heads = n_heads
+        self.head_dim = embed_dim // n_heads
+        
+        self.q_proj = nn.Linear(embed_dim, embed_dim)
+        self.k_proj = nn.Linear(embed_dim, embed_dim)
+        self.v_proj = nn.Linear(embed_dim, embed_dim)
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+        
+        # Project pairwise edge features to an additive attention bias per head
+        self.edge_proj = nn.Linear(edge_dim, n_heads)
+
+    def forward(self, x, edges, mask=None):
+        # x: (B, N, embed_dim), edges: (B, N, N, edge_dim)
+        B, N, _ = x.shape
+        
+        q = self.q_proj(x).view(B, N, self.n_heads, self.head_dim).transpose(1, 2)
+        k = self.k_proj(x).view(B, N, self.n_heads, self.head_dim).transpose(1, 2)
+        v = self.v_proj(x).view(B, N, self.n_heads, self.head_dim).transpose(1, 2)
+        
+        # Standard query-key dot product: (B, heads, N, N)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim ** 0.5)
+        
+        # Project and add edge bias: (B, N, N, heads) -> (B, heads, N, N)
+        edge_bias = self.edge_proj(edges).permute(0, 3, 1, 2)
+        scores = scores + edge_bias
+        
+        if mask is not None:
+            scores = scores.masked_fill(~mask.unsqueeze(1).unsqueeze(2), -1e9)
+            
+        attn_weights = F.softmax(scores, dim=-1)
+        out = torch.matmul(attn_weights, v).transpose(1, 2).contiguous().view(B, N, self.embed_dim)
+        return self.out_proj(out)
+```
+*Takeaway*: Adding edge features allowed a compact 2.5M parameter transformer to outperform traditional 10M+ models by directly providing flight travel times and collision hazards to the attention heads.
+
+---
+
+## 6. 2D Rotary Position Embeddings (2D RoPE)
+
+As proven in Billy Bradley's 8th place solution (*"Ender for <$200"*), Cartesian grid coordinates $(x, y)$ or absolute sinusoidal positional encodings fail to capture relative continuous displacements in orbital mechanics.
+
+**2D RoPE** generalises 1D RoPE (used in modern LLMs) by splitting the query and key channels into two halves—one rotating with coordinate $x$, the other rotating with coordinate $y$:
+
+```python
+def apply_2d_rope(q, k, pos_x, pos_y, theta_base=10000.0):
+    # q, k: (B, N, heads, head_dim), pos_x, pos_y: (B, N)
+    B, N, H, D = q.shape
+    d_half = D // 2
+    
+    # Compute inverse frequency bands
+    inv_freq = 1.0 / (theta_base ** (torch.arange(0, d_half, 2, device=q.device).float() / d_half))
+    
+    # Angles for X and Y components
+    sinusoid_x = torch.einsum("bn,d->bnd", pos_x, inv_freq) # (B, N, d_half/2)
+    sinusoid_y = torch.einsum("bn,d->bnd", pos_y, inv_freq)
+    
+    # Interleave to get full rotary embeddings
+    rot_x = torch.cat([sinusoid_x, sinusoid_x], dim=-1).unsqueeze(2) # (B, N, 1, d_half)
+    rot_y = torch.cat([sinusoid_y, sinusoid_y], dim=-1).unsqueeze(2)
+    
+    # Rotate first half of channels by X, second half by Y
+    q_x, q_y = q[..., :d_half], q[..., d_half:]
+    k_x, k_y = k[..., :d_half], k[..., d_half:]
+    
+    q_x_rot = (q_x * rot_x.cos()) + (rotate_half(q_x) * rot_x.sin())
+    q_y_rot = (q_y * rot_y.cos()) + (rotate_half(q_y) * rot_y.sin())
+    k_x_rot = (k_x * rot_x.cos()) + (rotate_half(k_x) * rot_x.sin())
+    k_y_rot = (k_y * rot_y.cos()) + (rotate_half(k_y) * rot_y.sin())
+    
+    return torch.cat([q_x_rot, q_y_rot], dim=-1), torch.cat([k_x_rot, k_y_rot], dim=-1)
+
+def rotate_half(x):
+    x1, x2 = x[..., :x.shape[-1]//2], x[..., x.shape[-1]//2:]
+    return torch.cat([-x2, x1], dim=-1)
+```
+*Properties*: $\mathbf{q}_i \cdot \mathbf{k}_j$ directly computes relative spatial displacement $(\mathbf{x}_i - \mathbf{x}_j)$ and is translation-invariant and rotationally sensitive without hard-coded grid discretizations.
+
+---
+
+## 7. "Planet Future" Forward Trajectory Projections
+
+Engineered by Boey (9th Place), this technique compensates for temporal blindness by forward-simulating deterministic planetary production and fleet arrival times:
+
+For each planet $i$ and future horizon $H \in \{1, 2, 5, 10, 20\}$ turns, simulate:
+$$\hat{G}_i(t + H) = G_i(t) + H \cdot P_i + \sum_{\substack{f \in \mathcal{F}_{\text{friendly}} \\ \text{ETA}(f) \le H}} S_f - \sum_{\substack{h \in \mathcal{F}_{\text{hostile}} \\ \text{ETA}(h) \le H}} S_h$$
+
+Passing these explicit multi-horizon garrison forecasts directly into the planet embedding stem allows the policy to:
+1. Detect impending falls 15–20 turns in advance.
+2. Launch synchronized multi-planet defense reinforcements with arrival times matching hostile fleet landings.
+3. Eliminate the need for deep recurrent memory (LSTM/GRU) by baking deterministic forward trajectories into the observation tensor.

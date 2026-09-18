@@ -217,3 +217,69 @@ class KaggleOrbitWarsAgent:
             return self.primary_model.act(observation)
 ```
 *Validation*: On the Kaggle leaderboard, 100% of matches that triggered the 1.0s fallback successfully converted winning positions without timing out.
+
+---
+
+## 5. Test-Time Rollout Lookahead Search
+
+In 2-player zero-sum matches, pure neural policy sampling can occasionally make tactical oversights (e.g. failing to notice an opponent's sniper fleet arriving in 2 turns). As pioneered by `flg` (6th Place), augment the neural policy with a **compact 1-to-2 step lookahead search**:
+
+```python
+def test_time_rollout_search(observation, policy_net, value_net, forward_simulator, top_k=4):
+    """
+    Evaluates top-K candidate actions using 1-step forward simulation + critic evaluation.
+    Runs in <200ms when paired with a compiled C++/Rust forward step.
+    """
+    # 1. Generate top-K candidate action sets from policy network
+    candidate_actions = policy_net.sample_top_k_action_sets(observation, k=top_k)
+    best_action = None
+    best_value = -float("inf")
+    
+    # 2. Simulate 1-step successor states using native compiled forward model
+    for action in candidate_actions:
+        next_obs, reward, is_terminal = forward_simulator.step_copy(observation, action)
+        
+        if is_terminal:
+            score = 1.0 if reward > 0 else -1.0
+        else:
+            # Evaluate successor state value using critic head
+            score = value_net(next_obs)
+            
+        if score > best_value:
+            best_value = score
+            best_action = action
+            
+    return best_action
+```
+
+---
+
+## 6. Hierarchical Decoupling (Strategic Macro Policy + C++ Physics Solver)
+
+As proven by `Xiangyu Liu` (10th Place), separating strategic decision-making from continuous physics execution produces highly modular and portable Kaggle agents:
+
+```
+                       HIERARCHICAL INFERENCE PIPELINE
+                       
+ [Raw Kaggle Observation: Celestial Orbits & Fleets]
+                         |
+                         v
+ [Precomputed MapCache: Static Keplerian Arcs & Sun Hazards]
+                         |
+                         v
+ [Strategic Policy (Neural Net): Macro-Targeting on Compact 44 Planets]
+  • Which planet to attack / reinforce
+  • What fraction of garrison to dispatch
+                         |
+                         v
+ [Native C++ Intercept Solver (Test Time)]
+  • Computes exact collision-free launch angles in <5ms
+  • Solves piecewise linear comet flybys
+                         |
+                         v
+ [Official Kaggle Action: [source, target_angle, ships]]
+```
+
+### Advantages for Serving
+1. **Model Parameter Efficiency**: The neural network does not need to learn trigonometric continuous angle solvers, allowing compact 2M–5M models to compete with 50M+ models.
+2. **Deterministic Safety**: The compiled C++ solver enforces 100% collision-free arcs around hazards, preventing random policy sampling errors from throwing away games.
