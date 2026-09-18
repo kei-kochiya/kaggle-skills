@@ -9,13 +9,19 @@
 
 ---
 
-### Official Winning Scoreboard & Technical Paradigm Comparison
+### Official Top-10 Winning Scoreboard & Methodology Matrix
 
-| Rank / Competitor | Core Architecture & Engine | Training Scale | Key Innovations & Strategic Paradigms | Final Outcome |
-| :--- | :--- | :--- | :--- | :--- |
-| 🥇 **1st Place (`IsaiahPressman`)** | **200M Parameter Transformer**<br>High-speed **Rust Simulator** | **15 Billion Steps**<br>(~2,400 B200-hours,<br>4× 8×B200 cluster) | • **Bitter Lesson validation**: pure self-play RL over human heuristics<br>• **Single-pass multi-player inference**: all agents predicted in 1 forward pass<br>• **Rust environment rewrite**: 120,000+ steps/sec with zero-copy pinned buffers<br>• **Sub-100MiB NF4 compression**: 4-bit NormalFloat group-128 LSQ quantization<br>• **Runtime CPU fallback cascade**: dynamic int8 + 5M fallback when overage < 1s | 🥇 **1st Place Gold**<br>Dominant tactical orbital dominance across 2p and 4p games |
-| 🥈 **2nd Place (`@re-writeup`)** | **Heuristic-to-PPO Transition**<br>PufferLib Vectorization | ~1–2 Billion Steps<br>(8× RTX 4090s) | • PufferLib accelerated rollout harness<br>• Imitation learning warm-start from heuristic bot trajectories<br>• Hybrid rule-based emergency overriding for sun collisions | 🥈 **2nd Place Silver** |
-| 🏅 **9th Place (`@jax-team`)** | **JAX Custom Simulator**<br>Reachability Tensor Policy | ~3 Billion Steps<br>(TPU v4 cluster) | • Fully vectorized simulator written in JAX with end-to-end GPU stepping<br>• 3D "Reachability Tensor" tracking fleet arrival horizons across planets<br>• Redundant state encoding with "Calendar" histogram summary tokens | 🏅 **9th Place Top 10** |
+| Rank / Competitor | Framework & Simulation Engine | Model Architecture & Size | Training Scale & Compute | Core Winning Innovations & Paradigms | Final Outcome |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🥇 **1st Place (`IsaiahPressman`)** | **Rust Vector Engine**<br>(PyO3 + Rayon) | **200M Transformer**<br>(38 blocks, 16 heads) | **15 Billion Steps**<br>(32× B200 GPUs,<br>~2,400 B200-hrs) | • **Bitter Lesson validation**: pure self-play PPO at scale<br>• **Single-pass multi-player forward pass**: all agents predicted in 1 pass<br>• **120k+ steps/sec Rust simulator** with pinned zero-copy buffers<br>• **Sub-100MiB NF4-LSQ quantization** + dynamic int8 CPU serving<br>• **Latency circuit breaker**: 5M model fallback when bank < 1.0s | 🥇 **1st Place Gold**<br>Decisive orbital macro-dominance across 2p & 4p |
+| 🥈 **2nd Place (`simjeg`)** | **Custom Engine**<br>PyTorch RL | Compact Entity Neural Policy | ~2 Billion Steps<br>(Multi-GPU cluster) | • **Progressive Curriculum**: Heuristic bots (Top 50) $\to$ Behavioral Cloning on top replays (Top 10) $\to$ RL fine-tuning (Top 5) $\to$ RL from scratch<br>• **Anti-Stall Reward Shaping**: $+1.0$ for winning $<500$ turns, $+0.5$ for winning $\ge 500$ turns | 🥈 **2nd Place Silver**<br>Elite tactical precision |
+| 🥉 **3rd Place (`Felix M. Neumann`)**<br>*"Ab in den Orbit"* | **JAX Vector Engine**<br>(`jax.jit` / `jax.vmap`) | Transformer Policy | ~3 Billion Steps<br>(GPU cluster) | • High-throughput JAX self-play PPO pipeline<br>• Transformer-based entity attention for orbital fleet routing | 🥉 **3rd Place Bronze**<br>High-speed parallel RL |
+| 🏅 **5th Place (`TonyK`)** | **Distributed IMPALA Engine** | Deep Actor-Critic Policy | ~2.5 Billion Steps<br>(Distributed actors) | • **Behavioral Cloning initialization** on top human/bot tournament replays<br>• **Asynchronous IMPALA** with V-trace off-policy corrections<br>• **Delayed moving teacher (Polyak anchor)** for policy regularization<br>• **Frozen historical opponent pool** to eliminate cyclic forgetting | 🏅 **5th Place Top 5**<br>Robust diverse counter-strategies |
+| 🏅 **6th Place (`flg`)** | **C++ Native Engine** | **2.5M Transformer**<br>with **Edge-Attention** | ~2 Billion Steps<br>(Local cluster) | • **Custom Relational Edge-Attention**: injects pairwise planet travel times, transit curves, and ownership change horizons directly into attention logits<br>• **2-Step Lookahead Rollout Search**: evaluates short rollouts during 2p inference | 🏅 **6th Place Top 10**<br>Hybrid RL + Search |
+| 🏅 **7th Place (`Audun Ljone Henriksen & Eirik Torp`)** | Structured Experimentation Harness | Hybrid Neural / Tactical Policy | Systematic ablation ladder | • **Component-Isolated Experimentation**: rigorous decomposition of tactical heuristics, search controllers, and RL modules<br>• **Local Elo Ladder**: high-confidence tracking preventing leaderboard overfitting | 🏅 **7th Place Top 10**<br>Disciplined validation |
+| 🏅 **8th Place (`Billy Bradley`)**<br>*"Ender for <$200"* | **JAX Vector Engine** | Frugal Transformer<br>with **2D RoPE** | **<$200 Compute Budget**<br>(Single GPU) | • **2D Rotary Position Embeddings (2D RoPE)** for planar orbital coordinates $(r, \theta)$<br>• **Autoregressive micro-steps** constructing multi-source launches<br>• **Precomputed reachability & ETA candidate filtering** | 🏅 **8th Place Top 10**<br>Most compute-efficient RL |
+| 🏅 **9th Place (`Boey`)**<br>*"End-to-End JAX PPO"* | **100% Pure JAX Pipeline**<br>(`jax.jit`, `jax.vmap`) | Entity Transformer Policy | ~4 Billion Steps<br>(TPU v4 / GPU) | • **Zero CPU-GPU transfer overhead**: entire environment, observation generation, action masking, rollout, and PPO loss fused into JIT GPU kernels<br>• **"Planet Future" Projections**: turn-by-turn simulated garrison forecasts | 🏅 **9th Place Top 10**<br>Engineered feature projections |
+| 🏅 **10th Place (`Xiangyu Liu`)** | **Decoupled Strategic / Physics Engine** | **44-Planet Compact Transformer** | ~1.5 Billion Steps<br>(JAX + C++) | • **Decoupled Architecture**: `MapCache` (geometry) + `StrategicEnv` (combat/economy) + JAX PPO + C++ analytical intercept solver<br>• Compact 44-entity observation space with folded fleet dynamics | 🏅 **10th Place Top 10**<br>Open-source clean systems design |
 
 ---
 
@@ -376,10 +382,177 @@ In approximately 8% of 4-player matches, the agent was assigned to severely degr
 
 ---
 
-## 8. Summary of Reusable Architectural Patterns
+## 8. The Top-10 Solution Breakdown & Architectural Paradigms
 
-1. **Sutton's Bitter Lesson**: When computational resources permit, scale expressivity and training throughput rather than hand-tuning domain features.
-2. **Unified Multi-Agent Forward Pass**: In $N$-player environments, output all agents' action distributions from a single shared transformer sequence.
-3. **Discrete Intent + Analytical Physics**: Combine discrete strategic neural selection (`source`, `target`) with deterministic continuous solvers for physical execution.
-4. **Grouped NormalFloat Quantization**: Use NF4/NF5 codebooks with LSQ block scale refinement to compress large networks into constrained deployment packages.
-5. **Runtime Fallback Cascades**: Pair heavy champion models with micro-architectures managed by runtime latency circuit breakers.
+While the 1st place solution demonstrated the supremacy of pure compute and large-scale model expressivity, the remaining prize-winning solutions (2nd through 10th place) uncovered vital complementary engineering paradigms—from progressive imitation curricula and frugal JAX optimizations to relational edge-attention and test-time rollout search.
+
+```
+                      THE 4 COMPETITIVE PARADIGMS OF ORBIT WARS
+                      
+ Paradigm A: Brute Scale & Self-Play
+ 🥇 1st Place (IsaiahPressman): 200M Transformer, 15B steps, pure self-play PPO, Rust accelerator
+                                      ▲
+                                      │
+ ┌────────────────────────────────────┼────────────────────────────────────┐
+ │                                    │                                    │
+ ▼                                    ▼                                    ▼
+ Paradigm B: Progressive Curricula    Paradigm C: Pure JAX Pipelines       Paradigm D: Inductive Biases & Search
+ 🥈 2nd (simjeg): Heuristics->BC->RL  🥉 3rd (Felix): JAX PPO              🏅 6th (flg): Edge-Attention + 2-step lookahead
+ 🏅 5th (TonyK): IMPALA + Replay BC   🏅 8th (Bradley): <$200 JAX + 2D RoPE 🏅 9th (Boey): "Planet Future" garrison forecasts
+                                      🏅 9th (Boey): 100% JIT zero-copy    🏅 10th (Liu): Strategic/Physics hierarchy
+                                      🏅 10th (Liu): JAX + C++ Solver
+```
+
+---
+
+### 8.1 2nd Place Solution (`simjeg`): Progressive Imitation-to-RL Curriculum & Anti-Stall Rewards
+
+**Author**: `simjeg` | **Final Rank**: 🥈 2nd Place Silver  
+**Core Innovation**: Progressive 4-stage training curriculum and step-conditioned reward decay.
+
+#### The Progressive Development Ladder
+Rather than training a massive network from scratch on Day 1, `simjeg` built a step-by-step competitive progression:
+1. **Stage 1 (Heuristic & Search Bots)**: Built a hand-crafted rule-based agent to establish strong baseline game understanding, breaking into the Top 50.
+2. **Stage 2 (Behavioral Cloning / Imitation Learning)**: Collected tournament replays from top-performing leaderboard bots and trained a compact neural policy via supervised behavioral cloning (cross-entropy loss over historical expert actions). This leapfrogged the agent directly into the Top 10 without spending millions of steps exploring random actions.
+3. **Stage 3 (Reinforcement Learning Fine-Tuning)**: Initialized an actor-critic model with the imitation weights and fine-tuned using self-play PPO, reaching the Top 5.
+4. **Stage 4 (From-Scratch RL Realignment)**: Having identified optimal hyperparameters, reward scalings, and network structures during fine-tuning, the final submission was trained from scratch with RL to avoid imitating human sub-optimal heuristics.
+
+#### Step-Conditioned Anti-Stall Reward Shaping
+To solve the $\gamma=1.0$ stalling crisis (where winning bots refuse to finish games), `simjeg` engineered an elegant piecewise step-decay reward:
+$$R_{\text{terminal}} = \begin{cases} +1.0 & \text{if Player Wins in } t < 500 \text{ steps} \\ +0.5 & \text{if Player Wins in } t \ge 500 \text{ steps} \\ -1.0 & \text{if Player Loses} \end{cases}$$
+*Impact*: The model learned that delaying victory halved its reward. Stalling behavior was eliminated overnight, dramatically increasing training state diversity and finishing tournament matches with ruthless efficiency.
+
+---
+
+### 8.2 3rd Place Solution (`Felix M. Neumann`, "Ab in den Orbit")
+
+**Author**: Felix M. Neumann | **Final Rank**: 🥉 3rd Place Bronze  
+**Core Innovation**: High-throughput self-play PPO and Transformer policy accelerated natively in JAX.
+
+#### JAX-Native Vectorized Self-Play
+Neumann leveraged **JAX** (`jax.jit`, `jax.vmap`) to maintain high training throughput. By avoiding Python-GPU transfer barriers, the self-play PPO agent scaled across multi-GPU hardware, training an expressive Transformer policy that excelled at multi-planet coordination and synchronized fleet arrivals.
+
+---
+
+### 8.3 5th Place Solution (`TonyK`): Asynchronous IMPALA + Frozen Historical Opponents
+
+**Author**: `TonyK` | **Final Rank**: 🏅 5th Place  
+**Core Innovation**: Distributed Asynchronous IMPALA with V-trace, Replay Behavioral Cloning initialization, and frozen historical opponent pools.
+
+#### The IMPALA Distributed Architecture
+While 1st place utilized synchronous on-policy PPO, `TonyK` implemented **IMPALA (Importance Weighted Actor-Learner Architecture)**:
+- Decoupled parallel actors running continuous simulation on CPU from a centralized GPU learner.
+- Corrected for policy lag between actor rollouts and learner gradients using **V-trace importance sampling weights**:
+  $$v_s = V(x_s) + \sum_{t=s}^{s+k-1} \gamma^{t-s} \left( \prod_{i=s}^{t-1} c_i \right) \delta_t V$$
+  where $c_i = \min\left(\bar{c}, \frac{\pi(a_i \mid x_i)}{\mu(a_i \mid x_i)}\right)$ and $\delta_t V = \rho_t \left( r_t + \gamma V(x_{t+1}) - V(x_t) \right)$.
+
+#### Delayed Moving Teacher & Historical Opponent Pools
+To prevent cyclic forgetting in multi-agent games:
+1. **Delayed Moving Teacher (Polyak Average)**: Maintained an exponential moving average (EMA) of network weights to serve as a stable distillation anchor ($\theta_{\text{teacher}} \leftarrow \tau \theta_{\text{teacher}} + (1 - \tau) \theta$).
+2. **Frozen Historical Opponent Pool**: Actors did not solely play the current policy. 25% of match seats were assigned to historical policy checkpoints frozen at earlier epochs. This maintained strategic pressure against rush tactics and prevented the agent from developing blind spots to discarded strategies.
+
+---
+
+### 8.4 6th Place Solution (`flg`): Relational Edge-Attention & 2-Step Lookahead Search
+
+**Author**: `flg` | **Final Rank**: 🏅 6th Place  
+**Core Innovation**: Custom Edge-Attention Transformer (2.5M params) and test-time 2-step rollout lookahead search.
+
+#### Custom Relational Edge-Attention
+Standard self-attention computes query-key affinity solely from node embeddings: $\frac{\mathbf{q}_i \mathbf{k}_j^T}{\sqrt{d}}$. In Orbit Wars, the tactical relationship between two planets depends heavily on **pairwise physical transit geometry**.  
+`flg` developed an **Edge-Attention Transformer** where explicit edge features $\mathbf{e}_{i,j}$ bias the attention logits directly:
+$$\mathbf{A}_{i,j} = \text{Softmax}\left(\frac{\mathbf{q}_i \mathbf{k}_j^T}{\sqrt{d}} + \mathbf{W}_e \mathbf{e}_{i,j} + b_e\right)$$
+where $\mathbf{e}_{i,j}$ encodes:
+- Gravitational transfer flight duration $\Delta t_{i \to j}$.
+- Solar obstacle proximity along the transfer arc.
+- Estimated defensive garrison at impact time.
+*Impact*: The model required only **2.5 million parameters** to achieve grandmaster-level tactical awareness, drastically outperforming standard transformers of equivalent parameter size.
+
+#### 2-Step Lookahead Rollout Search
+During runtime inference in 2-player matches, `flg` augmented the neural policy with a **2-step Monte Carlo lookahead search**:
+1. Sample top-$K$ candidate launch actions from the neural policy $\pi_\theta(a \mid s)$.
+2. Simulate the forward state $s_{t+1}$ using a fast C++ forward simulator.
+3. Evaluate the successor states using the learned critic $V(s_{t+1})$.
+4. Execute the action that maximizes the expected 2-step value return.
+
+---
+
+### 8.5 7th Place Solution (`Audun Ljone Henriksen & Eirik Torp`): Component-Isolated Experimentation
+
+**Authors**: Audun Ljone Henriksen & Eirik Torp | **Final Rank**: 🏅 7th Place  
+**Core Innovation**: Rigorous component isolation and internal Elo validation ladders.
+
+#### Systematic Decomposition
+The authors addressed the notorious difficulty of debugging RL policies by isolating sub-systems:
+- Built a modular testbench separating **macro-economic targeting** from **low-level collision-avoidance solvers**.
+- Maintained a continuous internal Elo rating system playing thousands of validation matches against a fixed suite of diverse benchmark bots (heuristic aggressors, defensive expanders, previous top models).
+- Enforced a rule: *No neural network or architectural change was submitted to Kaggle unless it proved a statistically significant Elo gain on the local benchmark ladder.*
+
+---
+
+### 8.6 8th Place Solution (`Billy Bradley`, "Ender for <$200"): Frugal JAX RL & 2D RoPE
+
+**Author**: Billy Bradley | **Final Rank**: 🏅 8th Place  
+**Core Innovation**: Training an elite agent on a single GPU for under $200 using JAX, 2D Rotary Position Embeddings (2D RoPE), and autoregressive micro-steps.
+
+#### 2D Rotary Position Embeddings (2D RoPE) for Orbital Space
+Standard transformers use learnable 1D position embeddings, which fail to capture continuous 2D planar distances and rotations. Bradley applied **2D Rotary Position Embeddings (2D RoPE)** to celestial coordinates $(r, \theta)$ or $(x, y)$:
+- Given coordinates $\mathbf{x}_i = (x_i, y_i)$, the query and key vectors are rotated in the complex plane across partitioned channel pairs:
+  $$\mathbf{q}_i^{(m)} = \mathbf{R}_{\Theta, x_i}^{(m)} \mathbf{q}_i^{(m)}, \quad \mathbf{k}_j^{(m)} = \mathbf{R}_{\Theta, x_j}^{(m)} \mathbf{k}_j^{(m)}$$
+- The resulting dot-product $\mathbf{q}_i \cdot \mathbf{k}_j$ depends naturally on the **relative Euclidean displacement** $(\mathbf{x}_i - \mathbf{x}_j)$ and relative orbital angle, providing the exact inductive bias required for Keplerian space mechanics without rigid grids.
+
+#### Autoregressive Micro-Steps
+Instead of predicting a single massive joint action vector for all 44 planets at once, Bradley's agent generated moves sequentially across autoregressive micro-steps:
+$$\pi(\mathbf{a}) = \prod_{k=1}^{M} \pi(a_k \mid a_{<k}, s)$$
+This allowed early planet launches to dynamically condition later planet targeting decisions within the same turn.
+
+---
+
+### 8.7 9th Place Solution (`Boey`, "End-to-End JAX PPO"): Pure JAX JIT & "Planet Future" Forecasts
+
+**Author**: Boey | **Final Rank**: 🏅 9th Place  
+**Core Innovation**: 100% pure JAX JIT-compiled pipeline with zero CPU-GPU transfer overhead and forward-simulated "Planet Future" state projections.
+
+#### The Zero-Overhead JAX JIT Pipeline
+While 1st place used Rust on CPU with async CUDA streams, Boey implemented the **entire training loop in JAX**:
+- Simulation environment physics, observation tensor construction, action masking, rollout trajectory collection, and PPO loss backprop were compiled into a **single unified GPU/TPU kernel** via `jax.jit` and vectorized across parallel games with `jax.vmap`.
+- **Zero Python or PCIe bottleneck**: Simulation and optimization resided continuously on the GPU accelerator, achieving multi-thousand steps/sec on modest single-node hardware.
+
+#### "Planet Future" Trajectory Projections
+Recognizing that planets have predictable circular orbits and fleet arrival times are deterministic, Boey engineered the **"Planet Future" tensor**:
+- For each planet $i$ and future lookahead step $k \in \{1, 2, 5, 10, 20\}$, the environment forward-simulated the expected garrison:
+  $$\hat{G}_i(t + k) = G_i(t) + k \cdot P_i + \sum_{\text{friendly fleets}} S_f - \sum_{\text{hostile fleets}} S_h$$
+- Passing this explicit future horizon directly into the entity transformer allowed the policy to make proactive defensive reinforcements 15 turns before hostile fleets arrived.
+
+---
+
+### 8.8 10th Place Solution (`Xiangyu Liu`): Hierarchical Decoupled Architecture
+
+**Author**: Xiangyu Liu | **Final Rank**: 🏅 10th Place  
+**Core Innovation**: Clean architectural decoupling between geometric caching, state simulation, and neural policy.
+
+#### The 3-Tier Systems Architecture
+Liu decoupled the Orbit Wars problem into three independent modules:
+1. **`MapCache` (Static Geometry)**: Precomputed static orbital trajectories, sun hazard arcs, and feasible Keplerian transfer windows.
+2. **`StrategicEnv` (Macro Simulation)**: A lightweight JAX simulation handling only discrete state changes—planet ownership, ship production, and fleet collision combat.
+3. **`JAX PPO Agent` + C++ Intercept Solver**: The neural network operates purely on a compacted 44-planet observation space (folding fleet metrics into planet arrival buckets). At test time, a specialized C++ solver translates the network's high-level discrete planet decisions into continuous intercept launch angles.
+
+---
+
+## 9. Comprehensive Takeaways: The Competitive RL Hierarchy
+
+Synthesizing all prize-winning solutions (1st through 10th place) reveals an unambiguous roadmap for winning competitive simulation challenges:
+
+1. **Compute vs. Inductive Bias Tradeoff**:
+   - **If you have massive compute (1st Place)**: Follow Sutton's Bitter Lesson. Scale to a 200M Transformer, train for 15B steps on Rust/Rayon vector envs, and let the model internalize physics unassisted.
+   - **If you have a modest compute budget (6th, 8th, 9th Place)**: Use domain inductive biases! Add **2D RoPE** (Bradley), **Edge-Attention** (flg), and **Planet Future Projections** (Boey) to achieve Top-10 performance on a 2.5M model for under $200.
+2. **Simulation Acceleration is Mandatory**:
+   - Every top-10 team rewrote the simulation environment: **Rust (1st Place)**, **JAX JIT (3rd, 8th, 9th, 10th Place)**, or **C++ (6th Place)**. Standard Python baselines are dead on arrival.
+3. **Imitation Warm-Starts Accelerate Early Elo**:
+   - If initial exploration in continuous physics is too sparse, use **Behavioral Cloning on tournament replays** (2nd Place `simjeg`, 5th Place `TonyK`) to seed tactical competency before launching PPO/IMPALA.
+4. **Solve Multiplayer Game Dynamics**:
+   - Never rely on pure self-play in $N \ge 3$ player games. Deploy **frozen historical opponent pools** (`TonyK`) and **AlphaStar league matchmaking** to eliminate non-transitive Rock-Paper-Scissors cycles.
+5. **Mitigate the Stalling Bug Early**:
+   - Always implement **step-decay rewards** (`simjeg`: $+1.0$ early vs $+0.5$ late) or surrender thresholds to prevent winning agents from stalling for hundreds of turns.
+6. **Deploy Turn-Time Circuit Breakers**:
+   - Package a micro-fallback model (1st Place: 5M model, $<30\text{ms}$) triggered by an overage bank threshold ($<1.0\text{s}$) to guarantee zero disqualifications on throttled Kaggle CPU workers.
