@@ -20,6 +20,12 @@ This repository serves two interconnected purposes:
 | **Playground Series S6E5: Predicting F1 Pit Stops** | Binary `PitNextLap` (ROC-AUC) | • Autonomous Codex GPT-5.5 YOLO scaling: 218 models across 37 architectures on 4× A100 GPUs<br>• Reconstructed total scheduled race laps (`LapNumber / RaceProgress`) and degradation pace<br>• RealMLP champion single model (CV 0.9544) + multi-head TabM & Tweedie XGBoost<br>• Adversarial Driver-drift mitigation via parallel Driver-dropped model stream<br>• Synchronous fold-aligned original data augmentation (sample weights 0.5–1.0)<br>• Consensus blending: AutoGluon + 186-OOF Logit Stacker with percentile rank averaging | Public: 0.95488<br>Private: **0.95503**<br>🥇 1st Place (+0.00001 win) | [Deep Dive](tabular/playground-s6e5-f1-pit-stops.md) |
 | **Playground Series S6E9: Predicting EV Adoption (Will_Buy_EV)** | Binary `Will_Buy_EV` (ROC-AUC) | • Spearman rank diversity screening threshold ($\rho \le 0.998$)<br>• Inductive bias pairing: PyTorch RealMLP continuous manifold decorrelation with GBDTs (+15% weight)<br>• Avoiding the candidate pooling fallacy (individual vs. pooled injection)<br>• Leaderboard weight sweep & plateau center-selection ($0.94644$)<br>• Zero-leakage prior calibration via monotonic 1D root-finding (17.4645%) | Baseline: 0.94162<br>Top-50: 0.94639<br>Top-Tier LB: **0.94644** | [Deep Dive](tabular/playground-s6e9-will-buy-ev.md) |
 
+### 🚀 Reinforcement Learning & Simulation Competitions
+
+| Competition | Target & Environment | Key Breakthroughs & Winning Techniques | Outcome / Scale | Link |
+| :--- | :--- | :--- | :--- | :--- |
+| **Kaggle Orbit Wars** | Multi-Agent 2D Orbital Space Conquest (2-Player & 4-Player) | • Sutton's Bitter Lesson: 200M-parameter Transformer trained for 15B steps<br>• Single-pass multi-player forward pass (evaluates all players in 1 pass, 2-4x speedup)<br>• High-performance Rust simulator (PyO3 + Rayon) reaching 120,000+ steps/sec with zero-copy pinned buffers<br>• Sub-100MiB submission packing via 4-bit NormalFloat (NF4-LSQ) group quantization (90.7MiB)<br>• Multi-tier serving cascade: dynamic int8 CPU inference + automatic 5M fallback when overage < 1.0s | 🥇 **1st Place Gold**<br>15 Billion Steps<br>32× B200 GPUs | [Deep Dive](reinforcement-learning/orbit-wars.md) |
+
 *(More competition writeups will be added as new competitions are unpacked into `Competition/`)*
 
 ---
@@ -49,6 +55,8 @@ Handbook/
 │   ├── playground-s6e3-customer-churn.md
 │   ├── playground-s6e5-f1-pit-stops.md
 │   └── playground-s6e9-will-buy-ev.md
+├── reinforcement-learning/            # Multi-agent RL & simulation challenges
+│   └── orbit-wars.md                  # 1st Place Orbit Wars 200M Transformer & Rust engine
 ├── cv/                                # Computer vision (Classification, Detection, Segmentation)
 ├── nlp/                               # Natural language processing, LLMs, and retrieval
 ├── time_series/                       # Forecasting, financial, and temporal series
@@ -73,4 +81,5 @@ Antigravity automatically discovers and activates skills located inside [`.agent
 | Skill Name | Purpose | Location |
 | :--- | :--- | :--- |
 | **`kaggle-tabular-playbook`** | Complete end-to-end tabular competition runbook (EDA, formula discovery, OOF Target Encoding, RealMLP, GBDTs, CIR calibration, Logit Stacking, Rank Blending) | [`.agent/skills/kaggle-tabular-playbook/SKILL.md`](../.agent/skills/kaggle-tabular-playbook/SKILL.md) |
+| **`kaggle-rl-simulation`** | Complete competitive reinforcement learning & simulation runbook (Rust/JAX vector envs, entity transformers, single-pass multi-player heads, stabilized PPO, NF4 quantization, CPU fallback cascades) | [`.agent/skills/kaggle-rl-simulation/SKILL.md`](../.agent/skills/kaggle-rl-simulation/SKILL.md) |
 | **`kaggle-competition-distiller`** | Reusable agent workflow to intake raw competition files/notebooks, reverse-engineer winning recipes, and produce Handbook entries + Agent Skills | [`.agent/skills/kaggle-competition-distiller/SKILL.md`](../.agent/skills/kaggle-competition-distiller/SKILL.md) |
