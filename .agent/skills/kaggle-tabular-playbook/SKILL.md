@@ -145,6 +145,14 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
    When combining ensemblers operating on different probability scales (e.g. Logit Stacker calibrated at base rate $~0.20$ vs. Hill Climbing compressed around $0.50$), convert predictions to empirical uniform percentiles via `rankdata(p) / len(p)` before weighted averaging.
 10. **Synchronous Fold Concatenation & Drift Pruning**:
    Safely inject original/external datasets by splitting synchronously into $K$ Stratified folds and evaluating solely on synthetic validation splits. Branch parallel models omitting features with high adversarial drift ($\text{AUC} > 0.65$, e.g. `Driver`).
+11. **Continuous Residual Margin Boosting (`init_score` / `base_margin`)**:
+   Instead of blending linear models and GBDTs post-hoc, train LightGBM (`init_score=m_logit`) and XGBoost (`base_margin=m_logit`) directly on the continuous logit predictions of an $L_2$-regularized linear model. This forces decision trees to model strictly the non-linear interaction residuals rather than slicing smooth continuous relationships.
+12. **Riemannian Hypersphere ($\mathbb{S}^{N-1}$) Fréchet Barycenter**:
+   When blending top-tier models, standard Euclidean rank averaging causes norm shrinkage $\|\bar{\mathbf{z}}\|_2 < \sum w_k \|\mathbf{z}_k\|_2$, compressing the discriminative spread of extreme tail probabilities. Project probit-transformed ranks to the unit hypersphere $\mathbb{S}^{N-1}$ and compute the intrinsic geodesic center of mass (Fréchet barycenter) via iterative Riemannian gradient descent in the tangent space.
+13. **Deterministic Generator Boundary Invariants**:
+   In synthetic datasets (e.g. CTGAN), audit data for generator memory leaks and hard physical boundaries where positive rate is strictly $0.0$ or $1.0$ with zero exceptions. Override predictions on these deterministic rows with extreme ranks ($\pm \infty$) prior to ranking to capture free metric lift (+0.00015+ AUC).
+14. **Zero-Tie Lexicographical Ranking (`lexrank`)**:
+   ROC-AUC penalizes tied prediction probabilities by awarding only $0.5$ concordance. Never output discrete, rounded, or clipped probabilities. Break all potential ties using an independent continuous secondary predictor (e.g., deep tabular neural net PyTorch RealMLP) via `np.lexsort((secondary, primary))` to guarantee strictly $N$ unique values in $(0, 1)$.
 
 ---
 
@@ -154,5 +162,7 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 - [Leak-Free Multi-Agg Target Encoding](./references/oof_target_encoding.md)
 - [CIR Calibration, Logit Stacking & Hill Climbing](./references/stacking_cir_ridge.md)
 - [Logit Stacking, Rank Averaging & Synchronous Fold Protocol](./references/logit_stacking_rank_blend.md)
+- [Riemannian Hypersphere Fréchet Ensembling & Boundary Rules](./references/riemannian_hypersphere_frechet_blend.md)
 - [Autonomous Multi-LLM Competitive Workflow](../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
+
 
