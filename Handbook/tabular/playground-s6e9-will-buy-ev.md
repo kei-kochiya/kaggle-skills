@@ -340,6 +340,7 @@ The transition from the 20% public test set to the 80% private test set caused m
   #9            M & M                    0.94692     0.94584      🥉 #3          +6 (Gold)
   #8            Prior                    0.94694     0.94583      🏅 #4          +4 (Gold)
   #6            Paul Bryan Elefante      0.94697     0.94580      🏅 #7          -1 (Gold)
+  #—            yuurei                   0.94674     0.94575      🏅 #8          Top 10 (Gold)
   #—            Xin Feng (@milanfx)      0.94684     0.94579      🏅 #10         Top 10
   #25           Ravi & Don Mani          0.94683     0.94574      🏅 #12         +13
   #34           IchikaHoshino (Our Team) 0.94682     ~0.94570     Top 10%        Safe Tier
@@ -392,6 +393,33 @@ Team Alicia's solution introduced three major breakthroughs to competitive tabul
 - **Claude & ChatGPT Cross-Examination**: Claude generated 100+ feature interaction hypotheses based on Paul Bryan's GLM margins; ChatGPT was prompted to challenge and expand them before sending back to Claude for implementation.
 - **The False Dead-End Trap**: Claude repeatedly warned that residual modeling and token features were "dead ends." Overriding the agent's skepticism and verifying on CV unlocked their final leap from 0.94640 to 0.94681 OOF.
 
+#### 4. Masaya Kawamata & mahog / Team M & M (3rd Place, 0.94584 Private): GLM Residual Offset, Soft Distillation & BPE Tokens
+- **Two-Stage GLM Offset + Residual LightGBM (Single-Model Peak)**:
+  $$\eta_{\text{final}} = \eta_{\text{GLM}}(X_{\text{linear}}) + f_{\text{LGBM}}(X_{\text{tree}})$$
+  Mahog trained a 316-feature GLM based on heuljax's approach (BPE groups, hierarchical target encoding, composition means, hinge features) with cross-fitted supervised encodings. Passing the GLM logit predictions as an offset (`init_score`) to LightGBM pushed single-model CV from `0.946326` (GLM alone) to **`0.946502`** (+0.00018 on all 5 folds!).
+- **Continuous Soft Pseudo-Label Distillation**:
+  - Added all 286,571 test rows to each fold's training data, scored by teacher models trained strictly excluding that validation fold, with sample weight = 2.
+  - **Empirical Law:** Hard pseudo-labels ($\hat{y} \in \{0, 1\}$) *degraded* CV below baseline. Continuous soft probabilities ($\hat{y} \in (0, 1)$) provided genuine knowledge distillation; permuting soft labels destroyed performance completely.
+- **DistilGPT-2 Synthesizer Reverse-Engineering**:
+  - In incomes from $50k to $99,999, values ending in `< 200` accounted for 19.8% in original data, but collapsed to 7.61% in synthetic train. A local DistilGPT-2 pilot produced **7.57%** (histogram correlation $r = 0.942$), proving the competition generator was an autoregressive transformer.
+  - Applying GPT-2 BPE tokenization to income strings (`50000` $\to$ `Ġ5` + `0000`) and target encoding token prefixes/suffixes provided a **+0.000266 CV boost** over baseline.
+- **Final 115-Column Stacking**:
+  - Combined 115 prediction columns (including an earlier 328-model meta-engine) via $L_2$-regularized Logistic Regression ($C=0.3$), advancing the team from 9th on Public LB to **3rd on Private LB (0.94584)**.
+
+#### 5. yuurei (8th Place, 0.94575 Private): Multi-Granularity Pyramids, Residual XGBoost & Group-Wise Partitions
+- **Multi-Granularity Target Encoding Pyramids**:
+  - Rather than single-resolution target encoding, built a 4-level quantization pyramid for continuous features: raw income, income rounded to $100, income rounded to $1,000, and floored commute distance.
+  - **Ablation:** Removing this 4-feature pyramid caused an immediate **0.00019 drop in 10-fold OOF**.
+- **Residual XGBoost on Logistic Margins**:
+  - Trained an $L_2$-regularized Logistic Regression on 622 features (reaching `0.946509` OOF).
+  - Fed its nested out-of-fold logits as `base_margin` into an XGBoost model on the same 622 features, reaching **`0.946617` OOF** (beating the logistic model across all 10 folds).
+- **Group-Wise Subgroup Partitioning (11 Models in Stack)**:
+  - Trained separate XGBoost models on isolated categorical slices (city type $\times$ car type, age groups, charging station proximity).
+  - Although individually weaker due to smaller sample sizes (`0.94494` vs `0.94624`), adding them to the stack gave **+0.000016 across all 10 folds** because their localized error residuals were completely decorrelated from global models.
+- **The Stacking Convergence Trap**:
+  - Default `scikit-learn` `LogisticRegression` uses `tol=1e-4`, which stops prematurely on large ensembles (50+ models) because the log-loss surface becomes flat. Tightening tolerance to **`tol=1e-8`** was essential for true convergence.
+- **LLM Agentic Implementation**: All code and experiments were autonomously written and executed via Claude Code (Fable 5.1 & Opus 5.5).
+
 ---
 
 ### 7.3 Critical Tabular Traps & Anti-Patterns Codified
@@ -405,4 +433,10 @@ Team Alicia's solution introduced three major breakthroughs to competitive tabul
 3. **Nonlinear Meta-Learners Destroy Generalization**:
    - Replacing linear/convex blending with non-linear Level-3 learners (Monotone LightGBM, varying coefficient models, KNN smoothing) degraded performance by $-2.7$u to **$-52.0$u**.
    - *Rule:* Ensembling must remain strictly linear, convex, or geodesic on the Riemannian manifold.
+4. **The Hard Pseudo-Labeling Trap (Threshold Noise Amplification)**:
+   - Thresholding pseudo-labels to hard binary $\{0, 1\}$ values degrades model generalization by amplifying classification boundary errors.
+   - *Rule:* Always use continuous soft probabilities ($p \in (0, 1)$) with sample weighting (e.g. weight=2) to preserve teacher entropy calibration.
+5. **The Stacking Solver Premature Termination Trap**:
+   - When stacking 50+ model prediction columns in logistic regression, `scikit-learn` defaults to `tol=1e-4`, which terminates before finding optimal weights on the flattened log-loss surface.
+   - *Rule:* Always set `tol=1e-8` and `max_iter=2000` when meta-stacking high-dimensional model logits.
 
