@@ -220,4 +220,120 @@ def extract_benford_deviation(df, num_col):
     return df
 ```
 
+---
+
+## 10. Multi-Granularity Target Encoding Pyramids
+
+Never target-encode a continuous column at only a single scale. Build a multi-tier coarse-to-fine quantization pyramid inside nested out-of-fold splits:
+
+```python
+from sklearn.preprocessing import TargetEncoder
+
+def build_multigranularity_te_pyramid(train_df, test_df, continuous_col, target_col, cv=5):
+    """
+    Builds a 4-tier quantization pyramid of target encodings:
+    1. Raw continuous value (fine-grained density)
+    2. Rounded to 100 (sub-cluster density)
+    3. Rounded to 1,000 (macro-cluster density)
+    4. Rounded to 10,000 or quantile bin (global monotonic prior)
+    """
+    K_train = pd.DataFrame(index=train_df.index)
+    K_test = pd.DataFrame(index=test_df.index)
+    
+    vals_tr = train_df[continuous_col]
+    vals_te = test_df[continuous_col]
+    
+    # 4-tier quantization pyramid
+    K_train['fine'] = vals_tr.astype(str)
+    K_test['fine'] = vals_te.astype(str)
+    
+    K_train['round_100'] = (vals_tr // 100 * 100).astype(str)
+    K_test['round_100'] = (vals_te // 100 * 100).astype(str)
+    
+    K_train['round_1k'] = (vals_tr // 1000 * 1000).astype(str)
+    K_test['round_1k'] = (vals_te // 1000 * 1000).astype(str)
+    
+    K_train['quant_bin'] = pd.qcut(vals_tr, q=20, labels=False, duplicates='drop').astype(str)
+    # Map test using train quantile boundaries
+    _, bins = pd.qcut(vals_tr, q=20, retbins=True, duplicates='drop')
+    K_test['quant_bin'] = pd.cut(vals_te, bins=bins, labels=False, include_lowest=True).fillna(-1).astype(str)
+    
+    # Smooth fold-safe out-of-fold target encoding
+    keys = ['fine', 'round_100', 'round_1k', 'quant_bin']
+    te = TargetEncoder(target_type='binary', smooth='auto', cv=cv, shuffle=True, random_state=42)
+    
+    te_tr = te.fit_transform(K_train[keys], train_df[target_col])
+    te_te = te.transform(K_test[keys])
+    
+    for i, k in enumerate(keys):
+        train_df[f"{continuous_col}_te_{k}"] = te_tr[:, i]
+        test_df[f"{continuous_col}_te_{k}"] = te_te[:, i]
+        
+    return train_df, test_df
+```
+
+---
+
+## 11. Offline Original Data Feature Lookup Prior (Zero-Leak Transfer)
+
+When competing on synthetic tabular datasets generated from an original reference dataset (e.g. S6E9, S6E10):
+- **Stacking original rows directly into training sets HURTS GBDTs** (e.g. $-0.00025$ AUC in S6E10) because tree splitters overfit the clean historical distribution.
+- **Using original data as an offline static target-mean lookup prior GAINS $+0.00093$ to $+0.00103$ AUC** across all folds with zero data leakage:
+
+```python
+def attach_original_lookup_prior(train_df, test_df, original_df, feature_cols, target_col):
+    """
+    Computes satisfaction/target rates from the ORIGINAL historical dataset
+    and maps them to competition train and test frames.
+    Completely zero leak: depends solely on the external original dataset.
+    """
+    lookup_tables = {c: original_df.groupby(c)[target_col].mean() for c in feature_cols}
+    
+    for c in feature_cols:
+        train_df[f"orig_rate__{c}"] = train_df[c].map(lookup_tables[c]).astype('float64')
+        test_df[f"orig_rate__{c}"] = test_df[c].map(lookup_tables[c]).astype('float64')
+        
+    return train_df, test_df
+```
+
+---
+
+## 12. BPE Subword Token Group Encodings on Numerical Strings
+
+Modern tabular synthesizers (e.g. GReaT, LLM-based generators) emit continuous numbers as text tokens using Byte-Pair Encoding (BPE) tokenizers (like GPT-2 or LLaMA):
+- Numerical strings are chopped into discrete subword chunks: `50000` $\to$ `Ġ5` + `0000`, `75000` $\to$ `Ġ75` + `000`.
+- Groups defined by token prefixes and token lengths capture synthesizer density spikes that decimal operations miss (+0.00027 CV lift in S6E9):
+
+```python
+import tiktoken
+from sklearn.preprocessing import TargetEncoder
+
+def add_bpe_token_encodings(train_df, test_df, num_col, target_col, cv=5):
+    """
+    Tokenizes integer strings with GPT-2 BPE and computes target encodings
+    over token prefixes, suffixes, and token-length patterns.
+    """
+    enc = tiktoken.get_encoding("gpt2")
+    
+    for df in [train_df, test_df]:
+        # Prefix leading space to match GPT-2 word-start convention
+        tokens = [enc.encode(" " + str(int(v))) if pd.notna(v) else [] for v in df[num_col]]
+        df[f"{num_col}_tok_len"] = [len(t) for t in tokens]
+        df[f"{num_col}_first_tok"] = [t[0] if len(t) > 0 else -1 for t in tokens]
+        df[f"{num_col}_last_tok"] = [t[-1] if len(t) > 0 else -1 for t in tokens]
+        
+    # Target-encode token categories out-of-fold
+    tok_keys = [f"{num_col}_tok_len", f"{num_col}_first_tok", f"{num_col}_last_tok"]
+    te = TargetEncoder(target_type='binary', smooth='auto', cv=cv, shuffle=True, random_state=42)
+    
+    te_tr = te.fit_transform(train_df[tok_keys].astype(str), train_df[target_col])
+    te_te = te.transform(test_df[tok_keys].astype(str))
+    
+    for i, k in enumerate(tok_keys):
+        train_df[f"{k}_te"] = te_tr[:, i]
+        test_df[f"{k}_te"] = te_te[:, i]
+        
+    return train_df, test_df
+```
+
 

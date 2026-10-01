@@ -45,14 +45,17 @@ class LogitStacker:
         self.eps = eps
         
         if HAS_CUML:
-            self.model = GPULogisticRegression(C=self.C, penalty='l2', max_iter=1000)
+            self.model = GPULogisticRegression(C=self.C, penalty='l2', max_iter=2000, tol=1e-8)
         else:
+            # Critical: Default tol=1e-4 terminates prematurely on flat loss surfaces
+            # when stacking 50+ correlated model prediction columns. tol=1e-8 is mandatory.
             self.model = CPULogisticRegression(
                 C=self.C,
                 penalty='l2',
                 class_weight=None,
                 solver='lbfgs',
-                max_iter=1000,
+                tol=1e-8,
+                max_iter=2000,
                 random_state=42
             )
 
@@ -232,3 +235,78 @@ If a feature shows high adversarial drift ($\text{AUC} > 0.65$, e.g. `Driver` in
 1. **Stream A (Full Feature Set)**: Captures within-dataset driver patterns.
 2. **Stream B (Drift Feature Dropped)**: Eliminates domain shift, providing robust, un-corrupted predictions.
 3. **Ensemble Injection**: Both streams are fed into the Logit Stacker, allowing the meta-learner to assign optimal orthogonal weights.
+
+---
+
+## 5. Shake-Up Defense: The Clark (1961) Final Hedging Decision Rule
+
+When selecting two final submissions on Kaggle, teams often pick their two highest public leaderboard scores. However, if these submissions originate from the same pipeline or share high Spearman correlation ($\rho > 0.99$), **the second submission provides zero statistical hedging value against private shake-up**.
+
+Under Clark's (1961) closed-form expectation for the maximum of two correlated normal variables $A \sim \mathcal{N}(\mu_A, \sigma^2)$ and $B \sim \mathcal{N}(\mu_B, \sigma^2)$ with correlation $\rho$:
+
+$$\mathbb{E}[\max(A, B)] - \mu_A = \sigma \sqrt{2(1 - \rho)} \cdot \phi\left(\frac{\Delta}{\sigma \sqrt{2(1 - \rho)}}\right) + \Delta \cdot \Phi\left(\frac{\Delta}{\sigma \sqrt{2(1 - \rho)}}\right) - \Delta$$
+
+Where $\Delta = \mu_A - \mu_B \ge 0$, and $\phi, \Phi$ are the standard Gaussian PDF and CDF.
+
+### The Two Laws of Hedging:
+1. **The Correlation Ceiling ($\rho \le 0.98$):** If $\rho(A, B) > 0.99$, the expected gain $\mathbb{E}[\max] - \mu_A$ rounds to zero (less than $0.05 \sigma$). It is literally the same submission wearing a hat.
+2. **The Proximity Ceiling ($\Delta < 2.0 \sigma$):** A candidate decorrelated at $\rho = 0.90$ that sits more than $2.0$ private standard errors below your ceiling will almost never exceed $A$ in any realization.
+
+### Complete Python Hedging Calculator:
+
+```python
+import numpy as np
+from scipy.stats import norm, spearmanr
+
+def clark_expected_max_gain(score_ceiling: float, score_hedge: float, rho: float, sigma: float) -> float:
+    """
+    Computes E[max(A, B)] - E[A] under Clark (1961) formula.
+    
+    score_ceiling: Public or CV score of your best candidate (A)
+    score_hedge: Public or CV score of your secondary candidate (B)
+    rho: Spearman correlation between submission A and submission B predictions
+    sigma: Estimated private leaderboard standard error (e.g. sqrt(AUC*(1-AUC)/N_test))
+    
+    Returns:
+        Expected score lift above candidate A in standard error units (z-score)
+    """
+    delta = score_ceiling - score_hedge
+    if delta < 0:
+        raise ValueError("score_ceiling must be >= score_hedge")
+        
+    theta = sigma * np.sqrt(2.0 * (1.0 - rho))
+    if theta < 1e-12:
+        return 0.0
+        
+    alpha = delta / theta
+    gain = theta * norm.pdf(alpha) + delta * norm.cdf(alpha) - delta
+    return gain / sigma # Return in units of sigma
+
+
+def audit_submission_pair(sub_a_path: str, sub_b_path: str, score_a: float, score_b: float, sigma: float):
+    """
+    Audits whether submission B is a valid statistical hedge against submission A.
+    """
+    df_a = pd.read_csv(sub_a_path)
+    df_b = pd.read_csv(sub_b_path)
+    target_col = df_a.columns[1]
+    
+    rho = spearmanr(df_a[target_col], df_b[target_col]).statistic
+    delta_se = (score_a - score_b) / sigma
+    gain_se = clark_expected_max_gain(score_a, score_b, rho, sigma)
+    
+    print("=" * 60)
+    print("CLARK (1961) FINAL HEDGING SELECTION AUDIT")
+    print("=" * 60)
+    print(f"Candidate A (Ceiling): Score = {score_a:.5f}")
+    print(f"Candidate B (Hedge)  : Score = {score_b:.5f} (Δ = {delta_se:.2f} σ)")
+    print(f"Spearman Rank Correlation (ρ): {rho:.5f}")
+    print(f"Expected Hedging Gain: +{gain_se:.4f} σ")
+    
+    if rho > 0.990:
+        print("[DECISION: INERT HEDGE] ρ > 0.99. Ticket B provides NO protection against noise.")
+    elif delta_se > 2.0:
+        print("[DECISION: INERT HEDGE] Distance > 2.0 σ. Ticket B is too weak to win.")
+    else:
+        print("[DECISION: VALID HEDGE] Ticket B provides genuine statistical hedging!")
+```

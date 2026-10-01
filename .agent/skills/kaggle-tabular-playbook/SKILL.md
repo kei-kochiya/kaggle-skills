@@ -87,6 +87,12 @@ Refer to detailed guides in [`references/feature_engineering.md`](./references/f
    Continuous variables with cyclic patterns benefit from harmonic embeddings ($p \in \{12, 14, 20\}$).
 6. **Multi-Aggregation OOF Target Encoding**:
    Compute `mean`, `std`, and `skew` with Empirical Bayes smoothing. See [`references/oof_target_encoding.md`](./references/oof_target_encoding.md).
+7. **Multi-Granularity Target Encoding Pyramids**:
+   Never encode continuous columns at one scale. Build a 4-tier quantization pyramid (raw, rounded to 100, rounded to 1,000, quantile bins) inside nested OOF.
+8. **Offline Original Data Feature Lookup Prior (Zero-Leak)**:
+   Avoid stacking original dataset rows directly into training data (which hurts GBDTs due to distribution drift). Instead, build static target-mean lookup tables (`orig_rate__*`) from original data to inject pure prior signal without leakage.
+9. **BPE Subword Token Group Encodings on Numerical Strings**:
+   Tokenize integer strings with GPT-2 BPE (`tiktoken`) to exploit synthesizer token-boundary artifacts. Target-encode token prefix/length categories.
 
 ---
 
@@ -106,6 +112,10 @@ Never rely on a single model family. Train diverse model classes on the exact sa
    - **TabICL**: Zero-shot in-context tabular foundation Transformer requiring no gradient updates.
    - **GraphSAGE GNN**: KNN graph embeddings built on GPU via cuML KNN.
    - **FT-Transformer / TabTransformer / Trompt / SNN (SELU)**: Attention and self-normalizing representations.
+3. **Group-Wise Subgroup Partitioning**:
+   - Train dedicated models on isolated categorical slices (e.g. `City Type` $\times$ `Car Type`, `Age Group`). While individually weaker, their error residuals are completely decorrelated from global models, providing consistent lift inside the meta-stack. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
+4. **Continuous Soft Pseudo-Label Distillation**:
+   - Never use hard binary pseudo-labels ($0/1$). Train student models on continuous teacher probabilities ($p \in (0, 1)$) with sample weight $w=2$ using teachers whose training strictly excluded the validation fold. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
 
 Save both **Out-Of-Fold (OOF)** predictions on the training set and **Test** predictions for each model:
 `models/model_name_oof.npy` (or `.csv`) and `models/model_name_test.npy`.
@@ -160,11 +170,17 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 16. **Full-Context Tabular Transformers (TabPFN-3.5) & The Context Law**:
    Modern tabular foundation models (TabPFN-3.5) scale to hundreds of thousands of in-context rows (`fit_mode='fit_with_cache'`, `ignore_pretraining_limits=True`). OOF performance scales log-linearly (+18.6u per doubling of context) without saturating. *Critical Guardrail:* Never pass cross-validated model OOFs to in-context attention models, as cross-attention to neighboring rows with ground-truth leaks leaks labels.
 17. **Generator-Surrogate Language Model Features (LLR)**:
-   In synthetic datasets generated from an original reference dataset, fine-tune a language model (e.g. `distilgpt2`) strictly on original data with zero competition labels seen. Compute the Log-Likelihood Ratio $\text{LLR} = \log p(\mathbf{x} \mid y=1) - \log p(\mathbf{x} \mid y=0)$ across random column orders as an informative prior for neural models and linear margin initializers.
+    In synthetic datasets generated from an original reference dataset, fine-tune a language model (e.g. `distilgpt2`) strictly on original data with zero competition labels seen. Compute the Log-Likelihood Ratio $\text{LLR} = \log p(\mathbf{x} \mid y=1) - \log p(\mathbf{x} \mid y=0)$ across random column orders as an informative prior for neural models and linear margin initializers.
+18. **The Stacking Solver Convergence Law (`tol=1e-8`)**:
+    When meta-stacking 50+ prediction columns via Logistic Regression, default `tol=1e-4` stops prematurely on the flattened log-loss surface. Setting `tol=1e-8` and `max_iter=2000` is mandatory to avoid suboptimal weights. See [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
+19. **Shake-Up Defense: The Clark (1961) Final Hedging Law**:
+    Under the exact expected value of the maximum of two correlated normals, a second submission correlated with your best at $\rho > 0.99$ is **statistically inert** against private shake-up. A valid hedge must simultaneously satisfy $\rho \le 0.98$ and distance $\Delta < 2.0\sigma$. See [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
 
 ---
 
 ## 7. References & Deep Dives
+- [GLM / Linear Residual Base Margin Boosting](./references/glm_residual_base_margin.md)
+- [Soft Pseudo-Label Distillation & Group-Wise Partitions](./references/soft_pseudolabel_distillation.md)
 - [Exploratory Data Forensics (DS & DA Playbook)](./references/eda_data_forensics.md)
 - [Feature Engineering Toolkit](./references/feature_engineering.md)
 - [Leak-Free Multi-Agg Target Encoding](./references/oof_target_encoding.md)
