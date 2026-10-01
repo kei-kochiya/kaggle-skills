@@ -475,3 +475,52 @@ Write a GPU-accelerated forward greedy selection script using cuDF and cuML:
    A 154-model ensemble combining 25 neural network families (GNNs, Transformers, SNNs, FMs) and 5 tree libraries outperforms any hyperparameter-tuned single GBDT by massive margins.
 4. **Discipline in the Meta-Layer**:
    Deep neural networks and complex GBDTs fail as final meta-stackers due to correlation overfitting. A simple, strongly regularized $L_2$ Logistic Regression on calibrated logit probabilities consistently wins private leaderboards.
+
+---
+
+## 7. The Dual-Agent Auditor Pattern & 2-Fold Screening Protocol
+
+Distilled from **Will Guesdon & Aryan Kaisth (6th Place, S6E9)**, this protocol optimizes the trade-off between rapid exploration speed and strict validation integrity in autonomous AI coding pipelines.
+
+```
++---------------------------------------------------------------------------------------+
+|                       DUAL-AGENT INDEPENDENT AUDITOR ARCHITECTURE                     |
+|                                                                                       |
+|   +------------------------------------+     +------------------------------------+   |
+|   |         WORKER / EXECUTOR          |     |        INDEPENDENT AUDITOR         |   |
+|   |            Claude Code             |     |             Codex CLI              |   |
+|   |  • Generates features & models     |     |  • Read-only access (-s read-only) |   |
+|   |  • Manages cloud Spot GPU jobs     |     |  • Different model family          |   |
+|   |  • Fits stacks & candidate blends  |     |  • Audits provenance & contracts   |   |
+|   +-----------------+------------------+     +-----------------+------------------+   |
+|                     |                                          |                      |
+|                     +--------------------+---------------------+                      |
+|                                          v                                            |
+|                        [8 Strict Pre-Submission Gates]                                |
+|                        1. Label leakage inside features                               |
+|                        2. Scored fold selection bias                                  |
+|                        3. Out-of-fold & test length consistency                       |
+|                        4. Row ordering preservation                                   |
+|                        5. Stacker nesting integrity                                   |
+|                        6. Public LB feedback leakage                                  |
+|                        7. Pseudo-label provenance                                     |
+|                        8. Exact fold-hash alignment                                   |
++---------------------------------------------------------------------------------------+
+```
+
+### 1. The Cross-Family Auditor Principle
+- **Failure Mode of Single Agents:** When the same LLM family generates code and audits its own outputs, it consistently inherits its own cognitive blind spots (e.g., subtle target leakage inside inner encoders or mislabeled seed counts).
+- **The Cross-Family Fix:** The auditor LLM **must** belong to a completely different foundation model family (e.g., OpenAI Codex auditing Anthropic Claude, or Gemini auditing Codex). Running `codex exec -s read-only` guarantees zero modifications while catching procedural contradictions with line-and-file evidence.
+
+### 2. The 2-Stage "Explore Fast, Confirm Strictly" Funnel
+Running full 5-fold cross-validation with formal contract signing for every early hypothesis paralyzes experimental velocity (e.g. Will's pipeline was trapped at `0.94644` for 23 days).
+
+The optimized protocol separates exploration from confirmation:
+1. **Stage 1: Cheap Declared Screen (Fold 0 $\to$ Fold 1):**
+   - Test a new feature or model hypothesis on **Fold 0** against a matched baseline.
+   - If positive, confirm on **Fold 1**. If both pass, promote to finalist status.
+   - Eliminates 80% of unviable hypotheses in minutes with minimal compute spend.
+2. **Stage 2: Strict Nested Finalist Gate:**
+   - Full 5-fold (or 20-subfold) training and nested meta-stack test.
+   - Must achieve at least **4 out of 5 fold wins** with a positive mean AUC delta.
+   - Must pass all **8 independent auditor rules** before submission generation.

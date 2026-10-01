@@ -339,6 +339,7 @@ The transition from the 20% public test set to the 80% private test set caused m
   #1 (fitted)   Team Alicia (URAD)       0.94691*    0.94588      🥈 #2          -1 (Gold)
   #9            M & M                    0.94692     0.94584      🥉 #3          +6 (Gold)
   #8            Prior                    0.94694     0.94583      🏅 #4          +4 (Gold)
+  #—            Will & Aryan             0.94687     0.94581      🏅 #6          Top 10 (Gold)
   #6            Paul Bryan Elefante      0.94697     0.94580      🏅 #7          -1 (Gold)
   #—            yuurei                   0.94674     0.94575      🏅 #8          Top 10 (Gold)
   #—            Xin Feng (@milanfx)      0.94684     0.94579      🏅 #10         Top 10
@@ -420,6 +421,34 @@ Team Alicia's solution introduced three major breakthroughs to competitive tabul
   - Default `scikit-learn` `LogisticRegression` uses `tol=1e-4`, which stops prematurely on large ensembles (50+ models) because the log-loss surface becomes flat. Tightening tolerance to **`tol=1e-8`** was essential for true convergence.
 - **LLM Agentic Implementation**: All code and experiments were autonomously written and executed via Claude Code (Fable 5.1 & Opus 5.5).
 
+#### 6. Will Guesdon & Aryan Kaisth (6th Place, 0.94581 Private / 0.94687 Public): Dual-Agent Harness, SFT GPT-2 Classifiers & L1 Rank Stacking
+- **The Dual-Agent Independent Auditor Harness**:
+  - Architected a multi-LLM engineering harness: **Claude Code** acted as the primary worker/executor (generating code, running Spot jobs on AWS, refitting stacks), while **Codex CLI** (`codex exec -s read-only`) served as an independent auditor enforcing 8 strict validation gates (label leaks, scored fold selection, row order, OOF consistency).
+  - *Core Insight:* Using a different model family for auditing prevents the auditor from inheriting the worker agent's cognitive blind spots.
+- **"Explore Fast, Confirm Strictly" Protocol**:
+  - Shifted from rigid 5-fold gates (which trapped exploration at 0.94644 for 23 days) to a 2-stage funnel: fast 2-fold screening (fold 0, then fold 1) for candidate exploration, with strict nested 5-fold CV reserved exclusively for finalists. In 3.5 days, nested CV surged from `0.946365` to **`0.946771`** (+0.000406).
+- **The 43-Member 6-Family K68 Stack**:
+  - Ensembled 43 diverse members across 6 families using $L_1$-regularized Logistic Regression on normalized ranks:
+    `LogisticRegression(penalty="l1", solver="saga", C=1.0, max_iter=3000)`
+  - Family weight contributions:
+    - Encoded GBDTs: $+0.12$
+    - TabPFN 3.5 (scaled to 635k context rows): $+2.63$
+    - RealMLP (`pytabkit`): $-0.50$ (contrast/decorrelation)
+    - GLMs on generator features (W40 reached 0.94654): $+4.67$ (dominant anchor!)
+    - GBDTs on GLM features: $+3.35$
+    - Supervised Fine-Tuned GPT-2 Row Classifiers: $+2.70$
+- **Supervised Fine-Tuned GPT-2 as a Row Classifier**:
+  - Entire tabular rows were converted into serialized text (named pairs averaged 65.7 tokens; values alone averaged 29.7 tokens).
+  - Trained GPT-2 directly with a new linear binary classification head, BCE loss, AdamW (lr=5e-5, linear decay) on AWS SageMaker Spot L40S GPUs.
+  - Adding 5 SFT GPT-2 models contributed $+0.00005$ nested CV, $+0.00008$ public LB, and $+0.00004$ private LB.
+  - *Critical Distinction:* **Supervised fine-tuning was mandatory.** Passing frozen GPT-2 text embeddings into LightGBM collapsed to `0.9040` AUC and added zero signal.
+- **The Public Blend Hedge Failure Law**:
+  - Evaluated 15 public blend hedges against base honest stacks. On private leaderboard, **every single one of the 15 hedges scored lower than its base stack**, confirming that blending public leaderboard files introduces optimism bias ($~0.00012$ to $0.00013$) that drops on private test.
+- **Negative Knowledge Codified (Aryan's Research)**:
+  - *Lagrange Multiplier Inversion:* Solving for analytical blend weights via Lagrange multipliers failed because high prediction collinearity makes the correlation matrix $C$ ill-conditioned / singular, causing weights to explode.
+  - *Siamese Networks:* Shared-weight Siamese branches over original vs synthetic data severely overfit due to sample size disparity (10k original rows vs 668k synthetic rows).
+  - *Sparsemax Optuna:* Assigning exact zeros via Sparsemax in Optuna stagnated at 0.94664 while being compute-heavy compared to $L_1$ SAGA logistic regression.
+
 ---
 
 ### 7.3 Critical Tabular Traps & Anti-Patterns Codified
@@ -439,4 +468,10 @@ Team Alicia's solution introduced three major breakthroughs to competitive tabul
 5. **The Stacking Solver Premature Termination Trap**:
    - When stacking 50+ model prediction columns in logistic regression, `scikit-learn` defaults to `tol=1e-4`, which terminates before finding optimal weights on the flattened log-loss surface.
    - *Rule:* Always set `tol=1e-8` and `max_iter=2000` when meta-stacking high-dimensional model logits.
+6. **The Frozen Text Embedding Trap**:
+   - Passing frozen text embeddings from pre-trained language models into GBDTs collapses performance (0.9040 AUC). GBDTs struggle with high-dimensional dense embedding vectors.
+   - *Rule:* Textual tabular representations only add value if the LLM is end-to-end supervised fine-tuned with a task-specific classification head.
+7. **The Lagrange Multiplier Matrix Inversion Trap**:
+   - Analytical optimization of ensemble weights using Lagrange multipliers requires inverting the model correlation matrix $C$. In competitive stacks, collinear base models make $C$ nearly singular, causing matrix inversion to produce numerically unstable, exploding weights.
+   - *Rule:* Always use regularized gradient-based meta-learners ($L_1$ SAGA or $L_2$ L-BFGS) rather than direct matrix inversion.
 
