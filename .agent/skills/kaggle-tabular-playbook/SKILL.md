@@ -153,6 +153,14 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
    In synthetic datasets (e.g. CTGAN), audit data for generator memory leaks and hard physical boundaries where positive rate is strictly $0.0$ or $1.0$ with zero exceptions. Override predictions on these deterministic rows with extreme ranks ($\pm \infty$) prior to ranking to capture free metric lift (+0.00015+ AUC).
 14. **Zero-Tie Lexicographical Ranking (`lexrank`)**:
    ROC-AUC penalizes tied prediction probabilities by awarding only $0.5$ concordance. Never output discrete, rounded, or clipped probabilities. Break all potential ties using an independent continuous secondary predictor (e.g., deep tabular neural net PyTorch RealMLP) via `np.lexsort((secondary, primary))` to guarantee strictly $N$ unique values in $(0, 1)$.
+15. **AUC-Direct Ensembling via Histogram FFT Convolution**:
+   Instead of fitting meta-learners on log-loss or squared error, directly optimize the smooth pairwise ROC-AUC ranking surrogate over all $n_+ \times n_-$ pairs:
+   $$\min_{w \ge 0,\ \sum_k w_k = 1} L(w) = \frac{1}{n_+ n_-} \sum_{i \in \text{pos}} \sum_{j \in \text{neg}} \sigma\left( -\frac{s_i - s_j}{\tau} \right), \quad s = Xw, \quad \tau = 0.1$$
+   Bypasses Monte Carlo subsampling by constructing linear-interpolation histograms of positive and negative scores on a high-resolution grid and evaluating the all-pairs loss in $O(n + N \log N)$ via `scipy.signal.fftconvolve`.
+16. **Full-Context Tabular Transformers (TabPFN-3.5) & The Context Law**:
+   Modern tabular foundation models (TabPFN-3.5) scale to hundreds of thousands of in-context rows (`fit_mode='fit_with_cache'`, `ignore_pretraining_limits=True`). OOF performance scales log-linearly (+18.6u per doubling of context) without saturating. *Critical Guardrail:* Never pass cross-validated model OOFs to in-context attention models, as cross-attention to neighboring rows with ground-truth leaks leaks labels.
+17. **Generator-Surrogate Language Model Features (LLR)**:
+   In synthetic datasets generated from an original reference dataset, fine-tune a language model (e.g. `distilgpt2`) strictly on original data with zero competition labels seen. Compute the Log-Likelihood Ratio $\text{LLR} = \log p(\mathbf{x} \mid y=1) - \log p(\mathbf{x} \mid y=0)$ across random column orders as an informative prior for neural models and linear margin initializers.
 
 ---
 
@@ -163,6 +171,8 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 - [CIR Calibration, Logit Stacking & Hill Climbing](./references/stacking_cir_ridge.md)
 - [Logit Stacking, Rank Averaging & Synchronous Fold Protocol](./references/logit_stacking_rank_blend.md)
 - [Riemannian Hypersphere Fréchet Ensembling & Boundary Rules](./references/riemannian_hypersphere_frechet_blend.md)
+- [AUC-Direct FFT Ensembling & Foundation Transformers](./references/auc_direct_fft_blend.md)
 - [Autonomous Multi-LLM Competitive Workflow](../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
+
 
 

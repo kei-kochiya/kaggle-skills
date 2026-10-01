@@ -319,6 +319,90 @@ The public leaderboard is evaluated on only **20% of test data (57,314 rows)**:
 
 ---
 
-## 7. Post-Competition Note
+## 7. Post-Competition Addendum & Gold-Medal Shakeup Forensics
 
-*This entry documents the complete technical journey, empirical laws, and ensembling methodologies established during the active competition phase of Kaggle Playground Series S6E9 (culminating in our peak score of **`0.94682`**, Rank 34, Top 0.98% Worldwide). An addendum covering the official top-10 gold medalist writeups and private leaderboard shakeup analysis will be published once final competition debriefs are released.*
+Following the close of Kaggle Playground Series S6E9, the top-performing teams published their post-mortems and codebases. The competition concluded with a dramatic leaderboard shakeup that validated our honest validation laws and provided several revolutionary tabular paradigms.
+
+### 7.1 The Great Leaderboard Shakeup Autopsy
+
+The transition from the 20% public test set to the 80% private test set caused massive volatility across the 3,576 competing teams:
+- **Maximum Upward Leap**: +533 spots on private LB.
+- **Maximum Downward Collapse**: -2,491 spots on private LB.
+- **Top-10 Rank Decoupling**: Within the public top 10, the Spearman rank correlation with private rank was a staggering **0.236**, confirming extreme public overfitting among teams chasing micro-variations on the public leaderboard.
+
+```
+                    THE S6E9 LEADERBOARD SHAKEUP MATRIX
+                    
+  Public Rank   Team / Competitor        Public LB   Private LB   Private Rank   Δ Rank
+  -----------   ----------------------   ---------   ----------   ------------   ------
+  #3            Chris Deotte             0.94705     0.94602      🥇 #1          +2 (Gold)
+  #1 (fitted)   Team Alicia (URAD)       0.94691*    0.94588      🥈 #2          -1 (Gold)
+  #9            M & M                    0.94692     0.94584      🥉 #3          +6 (Gold)
+  #8            Prior                    0.94694     0.94583      🏅 #4          +4 (Gold)
+  #6            Paul Bryan Elefante      0.94697     0.94580      🏅 #7          -1 (Gold)
+  #—            Xin Feng (@milanfx)      0.94684     0.94579      🏅 #10         Top 10
+  #25           Ravi & Don Mani          0.94683     0.94574      🏅 #12         +13
+  #34           IchikaHoshino (Our Team) 0.94682     ~0.94570     Top 10%        Safe Tier
+  #2            Gigrise                  0.94705     0.94564      #101           -99
+  #5            Daniel Mineev            0.94698     0.94565      #79            -74
+  #10           CHEN Xiang               0.94691     0.94551      #213           -203
+```
+*\* Team Alicia's selected Final B scored 0.94691 public; their unselected LB-fitted probe scored 0.94945.*
+
+#### The Quantitative Cost of Public-LB Fitting
+Team Alicia (2nd Place) conducted a deliberate experiment to measure the exact mathematical penalty of optimizing directly against public leaderboard feedback:
+- By iteratively tilting predictions toward public pseudo-labels, they pushed an unselected submission to **`0.94945` Public LB (#1 by a massive margin)**.
+- On the private leaderboard, that file completely collapsed to **`0.94313` (Rank 1646!)**.
+- Across all experimental submissions, the trade-off was governed by a strict linear law:
+  $$\Delta\text{Private} \approx +16.7\text{u} - 0.88 \times \Delta\text{Public}, \quad r = -0.97$$
+  **Every single unit ($10^{-5}$) of public LB gained by LB-fitting cost nearly $0.9$ units of private performance.**
+- **The Offset Law:** The public-minus-private offset was a near-constant **~105u ($0.00105$)** across all honest submissions (public top-100 median was 117u). The offset alone did not indicate overfitting; divergence from nested CV did.
+- **Nested CV Supremacy:** On fixed folds, nested out-of-fold cross-validation ranked private submissions with a Spearman correlation of **0.991**, whereas the public leaderboard achieved only **0.793**.
+
+---
+
+### 7.2 Winning Solution Deep Dives
+
+#### 1. Team Alicia (2nd Place, 0.94588 Private): Foundation Transformers & FFT Ensembling
+Team Alicia's solution introduced three major breakthroughs to competitive tabular machine learning:
+1. **Full-Context TabPFN-3.5 Scaling**:
+   - Deployed Prior Labs' `tabpfn==9.0.0` with `tabpfn-v3.5-20260909.safetensors` using `fit_mode='fit_with_cache'` and automatic KV-cache precision.
+   - **No Subsampling**: Evaluated each fold on all **~428k labelled training rows** and test predictions on the full **668,665 context rows**.
+   - **The Context Law**: Performance scaled log-linearly at **+18.6u per doubling of context rows** with zero saturation (from 0.946076 at 107k to 0.946459 at 428k).
+   - Produced the competition's highest-scoring standalone model (`TabPFN-MIX`, 0.946485 pooled AUC).
+2. **Generator-Surrogate Language Model Features (distilgpt2 LLR)**:
+   - Recognizing that the synthetic rows were generated by an LLM emitting numbers as tokens, they fine-tuned `distilgpt2` GReaT-style **strictly on the original 10,000 seed rows with zero access to competition labels**.
+   - Each row was scored for its Log-Likelihood Ratio across 4 random column permutations:
+     $$\text{LLR} = \log p(\mathbf{x} \mid y = \text{"Yes"}) - \log p(\mathbf{x} \mid y = \text{"No"})$$
+   - Feeding LLR as a prior into TabPFN and Logistic Regression added $+10.48$u to their master stack.
+3. **AUC-Direct Level-3 FFT Ensembling**:
+   - Rather than fitting Ridge or Logistic Regression on model predictions, they minimized the smooth pairwise ranking loss over all $2.6 \times 10^{10}$ pairs:
+     $$\min_{w \ge 0,\ \sum_k w_k = 1} L(w) = \frac{1}{n_+ n_-} \sum_{i \in \text{pos}} \sum_{j \in \text{neg}} \sigma\left( -\frac{s_i - s_j}{\tau} \right), \quad s = Xw, \quad \tau = 0.1$$
+   - Convolving positive and negative score histograms with the sigmoid kernel via `scipy.signal.fftconvolve` computed the exact all-pairs loss in $O(n + N \log N)$, securing an additional $+1.62$u over the best log-loss stack.
+
+#### 2. Ravi Ramakrishnan & Don Mani (12th Place, 0.94574 Private): Three Feature Views
+- **Three Distinct Feature Views**: Rather than training on a single monster feature store (which degraded CV), they partitioned features into 3 distinct perspectives:
+  1. *Broad Engineered Features* (demographic interactions and ratios)
+  2. *Local Rolling Window Rates* (Blamerx continuous radius smoothing)
+  3. *Donor-Based Statistics* (matching against original dataset seeds)
+- **GLM Margin Initialization**: Each feature view trained an independent LightGBM initialized with the continuous logit margin of a generator-aware logistic regression (`init_score`).
+- **Plain Tree Anchoring**: Blending the 3-view ensemble ($60\%$) with a plain LightGBM ($20\%$) and plain XGBoost ($20\%$) delivered an extremely resilient private score.
+
+#### 3. Xin Feng / `@milanfx` (10th Place, 0.94579 Private): Adversarial Multi-Agent Pairing
+- **Claude & ChatGPT Cross-Examination**: Claude generated 100+ feature interaction hypotheses based on Paul Bryan's GLM margins; ChatGPT was prompted to challenge and expand them before sending back to Claude for implementation.
+- **The False Dead-End Trap**: Claude repeatedly warned that residual modeling and token features were "dead ends." Overriding the agent's skepticism and verifying on CV unlocked their final leap from 0.94640 to 0.94681 OOF.
+
+---
+
+### 7.3 Critical Tabular Traps & Anti-Patterns Codified
+
+1. **The Disappearing Signal Trap ("Single-model gains routinely vanish in the stack")**:
+   - Team Alicia observed that complex feature sets giving $+19$u or $+12.5$u single-model gains collapsed to $+0.03$u to $+0.25$u when integrated into a mature stack.
+   - Public notebook OOFs trained on different folds produced an illusory $+10.42$u gain on dev that delivered **$0.0$u on private LB**.
+2. **The Neighbor-Reading Attention Leak (TabPFN / KNN Trap)**:
+   - Passing cross-validated model OOF predictions into in-context tabular transformers (TabPFN) or KNN meta-learners produces an artificial **$+162$u leakage illusion**. TabPFN's attention mechanism attends to context rows whose OOFs were generated by models that saw the target label of the query fold.
+   - *Rule:* Never feed model predictions to memory-based or attention-based meta-learners.
+3. **Nonlinear Meta-Learners Destroy Generalization**:
+   - Replacing linear/convex blending with non-linear Level-3 learners (Monotone LightGBM, varying coefficient models, KNN smoothing) degraded performance by $-2.7$u to **$-52.0$u**.
+   - *Rule:* Ensembling must remain strictly linear, convex, or geodesic on the Riemannian manifold.
+
