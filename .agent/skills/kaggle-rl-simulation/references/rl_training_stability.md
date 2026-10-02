@@ -4,6 +4,8 @@ Training deep transformers with Reinforcement Learning across billions of enviro
 
 This reference guide establishes battle-tested recipes for **Stabilized PPO**, **Teacher Distillation**, **Multi-Agent League Play**, and **Reward Shaping**.
 
+**Scope:** The numerical scaling and anti-stall examples below come from particular game settings; they are not universal defaults. For fixed-season Kaggriculture, use [the competition reference](kaggriculture.md): its released recipe uses `gamma=1`, terminal win/draw/loss, a fixed teacher reference in the public preset and frozen-actor critic fitting. Two-player self-play also needs external strength evaluation. Apply the early-victory sections only when a game can finish early and the incentive matches the objective.
+
 ---
 
 ## 1. Production PPO Configuration & Scaling Protocol
@@ -38,7 +40,7 @@ Proximal Policy Optimization (PPO) is the preferred algorithm for competitive si
 | `ppo_epochs` | $1$ | **Single-epoch PPO** avoids overfitting to recent rollout data in multi-agent games. |
 | `clip_eps` ($\epsilon$) | $0.20$ | Standard clipping radius for surrogate objective. |
 | `gae_lambda` ($\lambda$) | $0.95$ | Balances bias and variance in advantage estimation. |
-| `gamma` ($\gamma$) | $0.99 - 0.995$ | **Avoid $\gamma=1.0$** to prevent non-terminating stall strategies. |
+| `gamma` ($\gamma$) | Game-specific; examples $0.99 - 0.995$ | Test discounting against the actual horizon/objective. Fixed-season Kaggriculture uses $1.0$ without an early-finish bonus. |
 | `learning_rate` | $1 \times 10^{-4} \to 1 \times 10^{-5}$ | Linear warmup (10M steps) followed by cosine decay. |
 | `optimizer` | **Muon + AdamW** | Muon for large 2D attention matrices ($\ge 25M$ params); AdamW for embeddings. |
 | `entropy_coef` ($c_{\text{ent}}$) | $0.01 \to 0.001$ | Annealed gradually as policies stabilize. |

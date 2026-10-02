@@ -7,7 +7,11 @@ description: Use when building, training, optimizing, or deploying reinforcement
 
 ## Overview
 
-Competitive game and simulation challenges on Kaggle (e.g. Orbit Wars, Lux AI, Kore, Halite, Google Football) present a fundamentally different paradigm from tabular or static vision/NLP tracks. Success is governed by **Sutton's Bitter Lesson**: *expressive neural architectures and extreme simulation throughput scale far higher than hand-crafted human heuristics*.
+Competitive game and simulation challenges on Kaggle (e.g. Orbit Wars, Kaggriculture, Lux AI, Kore, Halite, Google Football) differ from tabular or static vision/NLP tracks. Choose heuristics, search, neural policies or hybrids using the game's action structure, compute budget and measured match outcomes. Scalable learning can help, but neither a neural architecture nor self-play guarantees superiority to a strong heuristic.
+
+### Competition-specific routing
+
+For advanced **Kaggriculture**, read [`references/kaggriculture.md`](references/kaggriculture.md) before using the generic recipes below. It covers tape-to-BC migration, episode-level replay alignment, sequential resource masks, frozen-actor critic fitting, fixed-season `gamma=1` PPO, memory limits and Final A/B controller differences. Its pinned reproduction settings take precedence over the Orbit Wars examples in this skill. The linked October 2, 2026 solution was provisionally first, with final ratings still unsettled.
 
 This skill operationalizes the complete engineering lifecycle to develop, train, stabilize, and deploy gold-medal reinforcement learning agents under strict submission constraints.
 
@@ -33,9 +37,9 @@ digraph rl_pipeline {
     
     "4. Stabilized RL Optimization" -> "Multiplayer / Non-Transitive Dynamics?" [shape=diamond, fillcolor="#e9ecef"];
     "Multiplayer / Non-Transitive Dynamics?" -> "AlphaStar League / Frozen Historical Opponent Pool" [label="Yes"];
-    "Multiplayer / Non-Transitive Dynamics?" -> "Teacher Distillation + Step-Conditioned Anti-Stall Rewards" [label="No (2-Player)"];
+    "Multiplayer / Non-Transitive Dynamics?" -> "Teacher Distillation + Game-Specific Terminal Rewards" [label="No (2-Player)"];
     "AlphaStar League / Frozen Historical Opponent Pool" -> "5. Submission Deployment Stack";
-    "Teacher Distillation + Step-Conditioned Anti-Stall Rewards" -> "5. Submission Deployment Stack";
+    "Teacher Distillation + Game-Specific Terminal Rewards" -> "5. Submission Deployment Stack";
     
     "5. Submission Deployment Stack" -> "Sub-100MiB NF4-LSQ Quantization + Dynamic int8 + Test-Time Lookahead Search";
 }
@@ -47,11 +51,11 @@ digraph rl_pipeline {
 
 ### Phase 1: Environment Diagnostics & Acceleration
 *Before writing neural network code, benchmark the raw simulation throughput.*
-1. **Benchmark Baseline Throughput**: If the official Python environment runs below $5,000\text{ steps/sec}$, full self-play will fail to converge within reasonable compute budgets.
+1. **Benchmark Baseline Throughput**: Measure simulator, feature encoding, inference, transfers and updates separately. Project the chosen experiment's wall time from measured throughput; there is no universal steps/sec threshold for convergence.
 2. **Select Acceleration Backend**:
    - **Pure JAX on GPU (`jax.jit`, `jax.vmap`)**: When dynamics can be vectorized into fixed-dimension tensors. Eliminates CPU-to-GPU memory transfer bottlenecks entirely, reaching up to $500,000+\text{ sps}$ on a single GPU (used by 8th place *Bradley* & 9th place *Boey*).
    - **Compiled Rust (PyO3 + Rayon) or C++**: When game rules require dynamic allocations, variable-length event queues, or irregular graph traversals. Use Rayon thread pools with preallocated pinned CPU memory buffers wrapped directly by PyTorch tensors (used by 1st place *Pressman*, 6th place *flg*, 10th place *Liu*).
-3. **Replay Parity Gate**: Validate that the compiled engine reproduces official tournament match JSON replays bit-for-bit across every turn before launching training runs.
+3. **Replay Parity Gate**: Validate state, action, reward, observation visibility and terminal semantics against the pinned official environment before relying on a custom engine. Include adversarial boundary cases; require exact agreement for discrete rules and define any floating-point tolerances explicitly.
 > **Detailed Guide:** See [`references/simulator_acceleration.md`](references/simulator_acceleration.md) for Rust Rayon bindings, JAX vectorization patterns, and parity regression harnesses.
 
 ---
@@ -98,12 +102,12 @@ digraph rl_pipeline {
    - **Muon + AdamW Optimizers**: Use Muon for 2D attention/linear matrices ($\ge 25M$ params) and AdamW for 1D embeddings/biases.
 3. **Teacher Distillation Anchor**:
    - Anchor policy updates against a historical `checkpoint_last_best.pt` using Policy KL-divergence and Critic Cross-Entropy loss terms.
-   - **The 70% Promotion Gate**: Replace the teacher checkpoint **only** when a candidate achieves $\ge 70\%$ win rate across 2,048 evaluation games.
+   - **Promotion Gate Example**: A 70% win rate over 2,048 games is one historical recipe, not a universal requirement. Select a gate using the opponent panel, uncertainty and cost; Kaggriculture's public preset keeps its reference fixed.
 4. **Anti-Stall Reward Shaping**:
-   - Avoid undiscounted $\gamma=1.0$ without step penalties.
-   - **Step-Conditioned Terminal Bonus**: Reward quick wins higher than delayed stalemates ($+1.0$ for win $<500$ steps, $+0.5$ for win $\ge 500$ steps) to eradicate defensive unit hoarding (2nd place *simjeg*).
+   - Choose discounting from the episode's objective. Fixed-season economics can appropriately use $\gamma=1.0$ without step penalties; Kaggriculture's released recipe does so.
+   - **Step-Conditioned Terminal Bonus**: When early victory is possible and desired, test quick-win bonuses (e.g. Orbit Wars 2nd place *simjeg*). Do not apply this to a season that always ends at a fixed horizon.
 5. **Game-Theoretic Dynamics (2-Player vs Multiplayer)**:
-   - **2-Player**: Pure self-play with teacher distillation converges to robust minimax policies.
+   - **2-Player**: Self-play with teacher regularization is a candidate training scheme; it does not guarantee a minimax policy. Evaluate against independent heuristics and historical strategies to expose blind spots.
    - **Multiplayer (3+ Players)**: Pure self-play risks non-transitive Rock-Paper-Scissors cycles. Maintain a **Frozen Historical Opponent Pool** (e.g. 50% current self-play, 35% frozen historical checkpoints, 15% heuristic/exploiters) to maintain policy diversity (5th place *TonyK*).
 > **Detailed Guide:** See [`references/rl_training_stability.md`](references/rl_training_stability.md) for PPO hyperparameter tables, BC warm-start pipelines, anti-stall reward curves, and league matchmaking algorithms.
 
@@ -142,8 +146,8 @@ digraph rl_pipeline {
 | **Action Generation** | Discrete Intent + Solver | $Q \cdot K^T / \sqrt{d}$ target selection + analytical physical intercept |
 | **Continuous Fleet Sizing** | Truncated Logistic Mixture | 8 components over $[S_{\min}, S_{\max}]$, normalized sigmoid means |
 | **Sparse-Reward Cold Start** | Behavioral Cloning Bootstrap | Supervised pretraining on heuristics/replays before RL fine-tuning |
-| **Optimization Stability** | Last-Best Teacher Distillation | $\alpha_{\text{KL}} D_{\text{KL}}(\pi_{\text{teacher}} \|\, \pi) + \alpha_{\text{CE}} \mathcal{L}_{\text{CE}}$, promote at $\ge 70\%$ win rate |
-| **Anti-Stall Terminal Reward** | Step-Conditioned Bonus | $+1.0$ if steps $< 500$, $+0.5$ if steps $\ge 500$ |
+| **Optimization Stability** | Teacher Regularization | $\alpha_{\text{KL}} D_{\text{KL}}(\pi_{\text{teacher}} \|\, \pi)$; choose fixed or promoted references and task-specific evaluation gates |
+| **Terminal Reward** | Match the game objective | Early-victory games may benefit from timing bonuses; fixed-season Kaggriculture uses win/draw/loss with $\gamma=1$ |
 | **Multi-Player Dynamics** | Frozen Opponent League | 50% self-play, 35% historic checkpoints, 15% exploiters |
 | **100MiB Submission Cap** | Grouped NF4-LSQ Codebook | Group size 128, fp16 scales, least-squares scale fitting ($90.7\text{ MiB}$) |
 | **Tactical Blunder Pruning** | Test-Time Lookahead Search | 1-2 turn shallow forward simulation evaluating survivability |
@@ -156,8 +160,8 @@ digraph rl_pipeline {
 | Anti-Pattern | Why It Fails | Battle-Tested Fix |
 | :--- | :--- | :--- |
 | **Cold-Start RL Exploration Trap** | Pure random exploration in complex multi-agent environments rarely encounters winning terminal states. | Warm-start policy with **Behavioral Cloning (BC)** on strong heuristic bots or top match replays before RL. |
-| **Premature Action Masking** | Masking illegal/suicidal actions early prevents the neural net from internalizing physical game boundaries. | Train **unmasked** during exploration so the network learns physics; introduce masks only for final fine-tuning and test serving. |
-| **Undiscounted Stalling ($\gamma=1.0$)** | With no temporal penalty, winning bots hoard units and stall for hundreds of turns rather than finishing matches. | Set $\gamma = 0.99$, add step-conditioned terminal rewards ($+1.0$ if $<500$ steps, $+0.5$ if $\ge 500$), or deduct small per-step penalties. |
+| **Rollout/Update Mask Mismatch** | Scoring sampled actions under different legal or sequential supports corrupts policy probability bookkeeping. | Use identical conditional masks and temperature in sampling and log-probability recomputation; exclude deterministic forced factors from actor loss. Whether to introduce masks early is game-specific. |
+| **Generic Discount/Step-Penalty Recipe** | Early-win incentives can distort a fixed-horizon investment game; heavy discounting weakens distant terminal outcomes. | Match reward and discount to the task. Kaggriculture uses $\gamma=1$ and terminal win/draw/loss; test shaping as an explicit ablation. |
 | **Pure Self-Play in Multiplayer ($N \ge 3$)** | Multi-agent environments have non-transitive dynamics; pure self-play leads to circular overfitting (Rock-Paper-Scissors). | Maintain a **Frozen Historical Opponent Pool** to evaluate against past generations and prevent meta-drift. |
 | **Single-Player Forward Evaluation** | Running $N$ separate forward passes per state wastes $2\times - 4\times$ rollout compute and GPU VRAM. | Unified Single-Pass Transformer: Concatenate all players' tokens into one sequence and predict all policies simultaneously. |
 | **Uniform INT4 Quantization** | Naive uniform quantization destroys attention weight distributions, causing catastrophic policy collapse. | Use **NormalFloat 4 (NF4)** codebook quantization with group size 128 and Least-Squares (LSQ) scale refinement. |
@@ -169,4 +173,5 @@ digraph rl_pipeline {
 
 ## Complete Competition Case Studies
 
+- **Kaggriculture (provisional current 1st, October 2, 2026)**: [Solution and public-notebook comparison](../../../Handbook/reinforcement-learning/kaggriculture.md) — Tape routing versus learned state-conditioned control, alternating BC/PPO, targeted heuristic demonstrations, sequential masks and final-day search. [Implementation reference](references/kaggriculture.md).
 - **Orbit Wars (1st–10th Place Post-Mortem)**: [Deep Dive Post-Mortem](../../../Handbook/reinforcement-learning/orbit-wars.md) — Comprehensive comparative autopsy covering the 200M Transformer, Rust engine acceleration, pure JAX JIT pipelines, NF4-LSQ quantization, Relational Edge-Attention, 2D RoPE, anti-stall reward curves, and test-time lookahead search.

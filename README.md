@@ -31,6 +31,7 @@ This repository serves two interconnected purposes:
 
 | Competition | Target & Environment | Key Breakthroughs & Winning Techniques | Outcome / Scale | Handbook Link |
 | :--- | :--- | :--- | :--- | :--- |
+| **Kaggriculture** | Two-player fixed-season farming with shared dynamic prices | • Public replay BC → frozen-actor critic fitting → current-policy self-play PPO<br>• Targeted heuristic demonstrations for weak shop regimes<br>• Typed Transformer tokens, conditional resource masks and terminal inventory safeguards<br>• Neural action repair plus final-day search (A), or rule-aware neural control (B)<br>• Comparison with public tape, heuristic and learning notebooks | **Provisional current 1st**, Oct 2, 2026<br>10.23M final models<br>8.29M retained games / 11.922B player steps (A) | [Deep Dive](Handbook/reinforcement-learning/kaggriculture.md) |
 | **Kaggle Orbit Wars** | Multi-Agent 2D Orbital Space Conquest (2-Player & 4-Player) | • Sutton's Bitter Lesson: 200M-parameter Transformer trained for 15B steps<br>• Single-pass multi-player forward pass (evaluates all players in 1 pass, 2-4x speedup)<br>• High-performance Rust simulator (PyO3 + Rayon) reaching 120,000+ steps/sec with zero-copy pinned buffers<br>• Sub-100MiB submission packing via 4-bit NormalFloat (NF4-LSQ) group quantization (90.7MiB)<br>• Multi-tier serving cascade: dynamic int8 CPU inference + automatic 5M fallback when overage < 1.0s | 🥇 **1st Place Gold**<br>15 Billion Steps<br>32× B200 GPUs | [Deep Dive](Handbook/reinforcement-learning/orbit-wars.md) |
 | **Kaggle Maze Crawler** | 2-Player Partially Observable Infinite Scrolling Maze RTS | • Heuristic Supremacy vs. Deep RL: 1st place scored BFS vs 3rd place PPO self-play<br>• Jump-aware BFS movement with arrival-time Steps-Before-Death (`sbd`) score steering<br>• One-shot economy latch (`ENERGY_CAP = 3000`): stop farming, shift 100% to hunting<br>• Active combat win condition: 300-energy Miner drop behind advance (`dist=5`) + lookahead survival<br>• The Homogeneous Self-Play Trap: why pure self-play RL created an energy-farming blind spot | 🥇 **1st Place Gold** (Heuristic)<br>🥉 **3rd Place Bronze** (Deep RL)<br>1v1 RTS Simulation | [Deep Dive](Handbook/reinforcement-learning/maze-crawler.md) |
 
@@ -69,6 +70,7 @@ Coding agents (e.g. Antigravity) automatically discover and activate skills loca
 
 
 #### Reinforcement Learning & Simulation Cookbooks
+- [Kaggriculture: Tapes to BC and Rule-Aware PPO](.agent/skills/kaggle-rl-simulation/references/kaggriculture.md): Episode-based replay splits, executed-action labels, sequential resource masks, critic fitting, targeted teacher refinement and compute-aware reproduction.
 - [Simulator Acceleration & Parity Verification](.agent/skills/kaggle-rl-simulation/references/simulator_acceleration.md): High-throughput Rust (PyO3 + Rayon) vector engines, zero-copy pinned tensors, AABB collision broad-phase filtering, and tournament replay parity harnesses.
 - [Neural Policy & Value Architectures](.agent/skills/kaggle-rl-simulation/references/model_architectures.md): Variable-entity transformers, shared global scratch tokens, single-pass multi-player joint inference, and truncated logistic mixture action heads.
 - [RL Training Stability & League Play](.agent/skills/kaggle-rl-simulation/references/rl_training_stability.md): Scaled PPO recipes, teacher distillation anchors with 70% win-rate promotion gates, AlphaStar-style league pools, and resolving the gamma=1.0 stalling dilemma.
@@ -98,6 +100,7 @@ kaggle-skills/
 │       │       ├── simulator_acceleration.md
 │       │       ├── model_architectures.md
 │       │       ├── rl_training_stability.md
+│       │       ├── kaggriculture.md
 │       │       └── submission_quantization_serving.md
 │       └── kaggle-competition-distiller/
 │           └── SKILL.md
@@ -112,6 +115,7 @@ kaggle-skills/
     │   ├── playground-s6e5-f1-pit-stops.md
     │   └── playground-s6e9-will-buy-ev.md
     └── reinforcement-learning/               # Multi-agent RL & simulation challenges
+        ├── kaggriculture.md                  # Provisional solution, public notebooks and BC/PPO workflow
         └── orbit-wars.md
 ```
 
