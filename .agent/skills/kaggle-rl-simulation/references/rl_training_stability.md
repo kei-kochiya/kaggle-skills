@@ -4,13 +4,13 @@ Training deep transformers with Reinforcement Learning across billions of enviro
 
 This reference guide establishes battle-tested recipes for **Stabilized PPO**, **Teacher Distillation**, **Multi-Agent League Play**, and **Reward Shaping**.
 
-**Scope:** The numerical scaling and anti-stall examples below come from particular game settings; they are not universal defaults. For fixed-season Kaggriculture, use [the competition reference](kaggriculture.md): its released recipe uses `gamma=1`, terminal win/draw/loss, a fixed teacher reference in the public preset and frozen-actor critic fitting. Two-player self-play also needs external strength evaluation. Apply the early-victory sections only when a game can finish early and the incentive matches the objective.
+**Scope:** Start with the [new-competition workflow](../SKILL.md). The numerical scaling, promotion and anti-stall examples below come from particular game settings; they are not universal defaults. For fixed-season Kaggriculture, use [the competition reference](kaggriculture.md): its released recipe uses `gamma=1`, terminal win/draw/loss, a fixed teacher reference in the public preset and frozen-actor critic fitting. Two-player self-play also needs external strength evaluation. Apply early-victory incentives only when a game can finish early and the changed reward is justified by measured outcomes.
 
 ---
 
 ## 1. Production PPO Configuration & Scaling Protocol
 
-Proximal Policy Optimization (PPO) is the preferred algorithm for competitive simulation because it scales linearly with distributed data parallelism without requiring the delicate actor-learner queue balancing of off-policy architectures (e.g. IMPALA / Ape-X).
+PPO is one candidate on-policy algorithm. Choose it using action structure, available infrastructure and the experiment budget; throughput and scaling must be measured. The [PPO paper](https://arxiv.org/abs/1707.06347) defines its objectives. The diagram below illustrates a large training configuration rather than a starting requirement.
 
 ```
                       DISTRIBUTED PPO ROLLOUT & UPDATE CYCLE
@@ -77,22 +77,20 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{PPO}} + c_{\text{val}} \mathca
 ### Checkpoint Promotion Rules
 1. Every $20\text{ million}$ environment steps, save a numbered checkpoint.
 2. Evaluate the checkpoint against `checkpoint_last_best.pt` over $2,048$ games with seats randomly shuffled.
-3. **The 70% Win-Rate Gate**: Do not promote on marginal improvements (e.g. 52% or 55%). A candidate replaces the teacher **only if it wins $\ge 70\%$ of games**. This filters out stochastic evaluation noise.
+3. **Example Promotion Gate**: A $70\%$ threshold is a particular recipe. Set a promotion criterion from independent opponents, seat/scenario design, sample uncertainty and cost. A lower measured gain may be useful with adequate evidence; one head-to-head threshold does not prove broad strength. A fixed reference is another option.
 
 ---
 
 ## 3. Multi-Agent Game Theory: Self-Play vs League Play
 
-### 3.1 The 2-Player vs 4-Player Fundamental Divergence
-- **2-Player Zero-Sum Games**:
-  - Minimax theorem guarantees that self-play with fictitious play or regularized PPO converges toward a Nash Equilibrium. Intransitive cycles are limited.
-- **4-Player Multiplayer Games**:
-  - The game is non-zero-sum from an individual player's perspective.
-  - **Severe Non-Transitivity**: Policy A beats Policy B, Policy B beats Policy C, but Policy C crushes Policy A (Rock-Paper-Scissors).
-  - **Kingmaker Scenarios**: A losing player can unpredictably determine which of the remaining leaders wins.
+### 3.1 Player count and opponent diversity
+
+Two-player zero-sum games can be non-transitive: rock-paper-scissors is a direct example. The minimax theorem is not a convergence guarantee for an arbitrary neural self-play/PPO implementation. Multiplayer rewards may be zero-sum or general-sum depending on their definition; inspect the game's actual payoff.
+
+An opponent pool can expose blind spots in either setting. Multiplayer games may additionally have kingmaker situations where one losing player's choices change which leader wins. Use external evaluation and consider historical policies, heuristics or exploiters when current-policy self-play misses relevant strategies. [Game-theoretic multi-agent learning](https://arxiv.org/abs/1711.00832).
 
 ### 3.2 AlphaStar-Style League Play for Multiplayer Games
-When competing in 3+ player games, replace pure self-play with an **Agent League**:
+When evidence supports a broader training opponent distribution, consider an **Agent League**. The mixture below is an example; opponent selection is part of the experiment:
 
 ```
                            LEAGUE MATCHMAKING POOL
@@ -119,21 +117,18 @@ When competing in 3+ player games, replace pure self-play with an **Agent League
 ## 4. Reward Engineering & Post-Mortem Pitfalls
 
 ### 4.1 The Discount Factor Dilemma & The Stalling Bug
-- **The Pitfall**: Setting $\gamma = 1.0$ (undiscounted) makes value heads mathematically equal to terminal win probabilities. However, the agent has **zero incentive to end the game early**.
+- **Conditional Pitfall**: With win-only reward, no intermediate rewards and `gamma=1`, equally likely early and late victories have the same expected return. A scalar critic represents expected return, not automatically a win probability: `+1/0/-1` targets give expected win-minus-loss. A fixed season can correctly use `gamma=1`.
 - **Symptom**: Once an agent gains a decisive lead (e.g. controls 80% of ships), it refuses to launch finishing attacks. It hoards units and circles passively until the turn limit, burning billions of compute steps on trivial states.
 - **Battle-Tested Fixes**:
   1. **Mild Temporal Decay**: Set $\gamma = 0.99$ or add a per-turn cost:
      $$r_t = -0.001 \quad \text{for non-terminal turns}$$
-  2. **Surrender / Fast-Forward Trigger**: If the critic estimates win probability $P_{\text{win}}(p) > 0.98$ continuously for 30 turns, declare game over and award victory immediately during training rollouts.
+  2. **Early-Termination Experiment**: Ending a rollout from a critic confidence threshold changes the game and can label a mistaken estimate as a win. Keep it outside parity claims and verify strength in full official games; a critic estimate alone is not a proven terminal result.
 
-### 4.2 The Action Masking Paradox
-- **The Paradox**: Masking illegal or suicidal actions (e.g. launching fleets directly into the sun) seems intuitive. However, empirical testing in Orbit Wars proved that **training with action masks produced an inferior policy**.
-- **The Explanation**:
-  - When the mask blocks bad moves, the neural network treats the environment as a magic black box where the sun does not exist.
-  - Without the mask, the network experiences catastrophic ship vaporization whenever it ignores orbital physics, forcing the internal transformer representations to model celestial gravity, velocity vectors, and hazard boundaries.
-- **Standard Protocol**:
-  - **Phase 1 (Exploration & Physics Learning)**: Train **unmasked**. Let the model fail and internalize environment dynamics.
-  - **Phase 2 (Competitive Fine-Tuning & Test Time)**: Enable the action mask during the final 5% of training and enforce it during test-time inference.
+### 4.2 Action masks and strategic filters
+
+Distinguish impossible actions, joint resource constraints and legal but risky choices. A game-specific experiment may allow risky choices during exploration; this does not establish a general unmasked-training protocol or a fixed point at which to enable masks.
+
+For PPO, sampling and update-time probability recomputation must use matching conditional support and temperature. Sequential choices reserve resources in the game's execution order. Treat a deterministic repair as a separate controller component and retain proposed versus executed choices. Kaggriculture's rule-aware controller is an example where consistent masks are central to the adopted training.
 
 ---
 
@@ -149,7 +144,7 @@ As demonstrated by `simjeg` (2nd Place) and `TonyK` (5th Place), starting RL fro
                             v
  Stage 2: Supervised Behavioral Cloning (BC)
   • Minimize Cross-Entropy Loss: L_BC = -log π_θ(a_expert | s)
-  • Reaches ~Top 10 Elo baseline in hours with zero simulator stepping
+  • Uses recorded valid decisions; verify complete held-out student games
                             |
                             v
  Stage 3: RL Policy Fine-Tuning (PPO / Asynchronous IMPALA)
@@ -158,9 +153,9 @@ As demonstrated by `simjeg` (2nd Place) and `TonyK` (5th Place), starting RL fro
   • Adds self-play exploration beyond the expert replay distribution
                             |
                             v
- Stage 4: From-Scratch RL Realignment (Optional Final Polish)
-  • Train final submission from scratch once hyperparameters & architectures
-    are proven, eliminating any suboptimal habits copied from expert replays
+ Stage 4: Failure-Driven Improvement
+  • Improve teachers/controllers or collect targeted demonstrations
+  • Compare another BC/RL cycle with the preserved best agent
 ```
 
 ```python
@@ -203,7 +198,7 @@ Where $T_{\text{cutoff}} = 500$ (or roughly half the max game horizon).
 
 ## 7. Frozen Historical Opponent League Pools & Polyak Teachers
 
-In multi-agent environments with $N \ge 3$ players, policies trained purely against current self-play rapidly develop blind spots to earlier strategies (e.g. early rush attacks). `TonyK` (5th Place) and AlphaStar solve this with a **Frozen Opponent Matchmaking Pool**:
+Current-policy self-play can leave blind spots to other strategies in both two-player and multiplayer games. A **Frozen Opponent Matchmaking Pool** is one option to test. The example below illustrates retaining historical opponents; set its mixture and size from actual evaluation needs.
 
 ```python
 class LeagueMatchmaker:

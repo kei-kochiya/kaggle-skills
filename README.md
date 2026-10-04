@@ -29,6 +29,8 @@ This repository serves two interconnected purposes:
 
 ### 🚀 Reinforcement Learning & Simulation Competitions
 
+Start with [A head start in the next simulation competition](Handbook/reinforcement-learning/simulation-competition-starter.md): transferable lessons, runnable baseline/evaluation milestones and a reusable agent kickoff prompt.
+
 | Competition | Target & Environment | Key Breakthroughs & Winning Techniques | Outcome / Scale | Handbook Link |
 | :--- | :--- | :--- | :--- | :--- |
 | **Kaggriculture** | Two-player fixed-season farming with shared dynamic prices | • Public replay BC → frozen-actor critic fitting → current-policy self-play PPO<br>• Targeted heuristic demonstrations for weak shop regimes<br>• Typed Transformer tokens, conditional resource masks and terminal inventory safeguards<br>• Neural action repair plus final-day search (A), or rule-aware neural control (B)<br>• Comparison with public tape, heuristic and learning notebooks | **Provisional current 1st**, Oct 2, 2026<br>10.23M final models<br>8.29M retained games / 11.922B player steps (A) | [Deep Dive](Handbook/reinforcement-learning/kaggriculture.md) |
@@ -54,7 +56,7 @@ Coding agents (e.g. Antigravity) automatically discover and activate skills loca
 | Skill Name | Purpose | Location |
 | :--- | :--- | :--- |
 | **`kaggle-tabular-playbook`** | Complete end-to-end tabular competition runbook (EDA, formula discovery, Snap features, Radix encoding, OOF Target Encoding, RealMLP, GBDTs, CIR calibration, Logit Stacking & Hill Climbing) | [`.agent/skills/kaggle-tabular-playbook/SKILL.md`](.agent/skills/kaggle-tabular-playbook/SKILL.md) |
-| **`kaggle-rl-simulation`** | Complete competitive reinforcement learning & simulation runbook (Rust/JAX vector envs, entity transformers, single-pass multi-player heads, stabilized PPO, NF4 quantization, CPU fallback cascades) | [`.agent/skills/kaggle-rl-simulation/SKILL.md`](.agent/skills/kaggle-rl-simulation/SKILL.md) |
+| **`kaggle-rl-simulation`** | New-game kickoff, heuristic/search/BC/RL selection, replay and probability correctness, evaluation, profiling and submission checks | [`.agent/skills/kaggle-rl-simulation/SKILL.md`](.agent/skills/kaggle-rl-simulation/SKILL.md) |
 | **`kaggle-competition-distiller`** | Reusable agent workflow to intake raw competition files/notebooks, reverse-engineer winning recipes, and produce Handbook entries + Agent Skills | [`.agent/skills/kaggle-competition-distiller/SKILL.md`](.agent/skills/kaggle-competition-distiller/SKILL.md) |
 
 ### Skill Cookbooks & References
@@ -70,10 +72,11 @@ Coding agents (e.g. Antigravity) automatically discover and activate skills loca
 
 
 #### Reinforcement Learning & Simulation Cookbooks
+- [New Simulation Competition Starter](Handbook/reinforcement-learning/simulation-competition-starter.md): General workflow, transferable lessons, resource-aware algorithm choices and a ready-to-adapt kickoff prompt.
 - [Kaggriculture: Tapes to BC and Rule-Aware PPO](.agent/skills/kaggle-rl-simulation/references/kaggriculture.md): Episode-based replay splits, executed-action labels, sequential resource masks, critic fitting, targeted teacher refinement and compute-aware reproduction.
 - [Simulator Acceleration & Parity Verification](.agent/skills/kaggle-rl-simulation/references/simulator_acceleration.md): High-throughput Rust (PyO3 + Rayon) vector engines, zero-copy pinned tensors, AABB collision broad-phase filtering, and tournament replay parity harnesses.
 - [Neural Policy & Value Architectures](.agent/skills/kaggle-rl-simulation/references/model_architectures.md): Variable-entity transformers, shared global scratch tokens, single-pass multi-player joint inference, and truncated logistic mixture action heads.
-- [RL Training Stability & League Play](.agent/skills/kaggle-rl-simulation/references/rl_training_stability.md): Scaled PPO recipes, teacher distillation anchors with 70% win-rate promotion gates, AlphaStar-style league pools, and resolving the gamma=1.0 stalling dilemma.
+- [RL Training Stability & League Play](.agent/skills/kaggle-rl-simulation/references/rl_training_stability.md): Example PPO, teacher and league recipes with game-specific reward, discount and promotion choices.
 - [Submission Quantization & CPU Serving](.agent/skills/kaggle-rl-simulation/references/submission_quantization_serving.md): Sub-100MiB checkpoint packing via 4-bit NormalFloat (NF4-LSQ) group quantization, dynamic int8 CPU inference, and 1s overage fallback cascades.
 
 ---
@@ -115,8 +118,10 @@ kaggle-skills/
     │   ├── playground-s6e5-f1-pit-stops.md
     │   └── playground-s6e9-will-buy-ev.md
     └── reinforcement-learning/               # Multi-agent RL & simulation challenges
+        ├── simulation-competition-starter.md  # New-game workflow and agent kickoff prompt
         ├── kaggriculture.md                  # Provisional solution, public notebooks and BC/PPO workflow
-        └── orbit-wars.md
+        ├── orbit-wars.md
+        └── maze-crawler.md
 ```
 
 *(Note: Raw multi-gigabyte competition files, datasets, and local checkpoints in `Competition/` are excluded via `.gitignore`.)*

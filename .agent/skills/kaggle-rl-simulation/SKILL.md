@@ -1,177 +1,75 @@
 ---
 name: kaggle-rl-simulation
-description: Use when building, training, optimizing, or deploying reinforcement learning agents, neural policies, and simulation environments for competitive games or simulation challenges on Kaggle.
+description: Use for Kaggle game and simulation competition kickoff, heuristic/search/neural agent development, replay imitation, RL training, simulator validation and submission evaluation.
 ---
 
-# Competitive Reinforcement Learning & Simulation Playbook 🚀
+# Simulation competition workflow
 
-## Overview
+Choose an approach using the game, available teachers, measured outcomes, hardware and deadline. A heuristic, search planner, learned policy or hybrid can be appropriate. Preserve a working baseline while testing improvements.
 
-Competitive game and simulation challenges on Kaggle (e.g. Orbit Wars, Kaggriculture, Lux AI, Kore, Halite, Google Football) differ from tabular or static vision/NLP tracks. Choose heuristics, search, neural policies or hybrids using the game's action structure, compute budget and measured match outcomes. Scalable learning can help, but neither a neural architecture nor self-play guarantees superiority to a strong heuristic.
+## Routing
 
-### Competition-specific routing
+- For a new competition or a request to transfer past lessons, read the [simulation starter and kickoff prompt](../../../Handbook/reinforcement-learning/simulation-competition-starter.md). It explains the first deliverables and which assumptions must be re-derived.
+- For advanced Kaggriculture reproduction or tape-to-learning work, read [references/kaggriculture.md](references/kaggriculture.md). Its source pins and controller semantics take precedence over unrelated examples.
+- Read detailed references below only when the current stage needs them. Their numerical settings and scaling examples are game-specific.
 
-For advanced **Kaggriculture**, read [`references/kaggriculture.md`](references/kaggriculture.md) before using the generic recipes below. It covers tape-to-BC migration, episode-level replay alignment, sequential resource masks, frozen-actor critic fitting, fixed-season `gamma=1` PPO, memory limits and Final A/B controller differences. Its pinned reproduction settings take precedence over the Orbit Wars examples in this skill. The linked October 2, 2026 solution was provisionally first, with final ratings still unsettled.
+## Establish a runnable foundation
 
-This skill operationalizes the complete engineering lifecycle to develop, train, stabilize, and deploy gold-medal reinforcement learning agents under strict submission constraints.
+1. Inspect official rules, source/configuration, scoring and submission constraints. Record environment versions and source identities. Determine player count, allowed observations, randomness, action execution order, illegal-action handling and terminal behavior.
+2. Run an official starter or simple heuristic through a complete game. Save its source, replay, terminal result and latency. A read-only research request does not imply starting a training campaign.
+3. Build a repeatable evaluator with active, distinct opponent families when applicable. Use development and final held-out scenario panels. Swap seats for two-player games and use appropriate assignments for multiplayer or single-player tasks.
+4. Measure simulation, encoding, inference, transfers and updates separately. Check host RAM, GPU memory and the deployment CPU budget. Project wall time from measured throughput before scaling.
+5. Package a simple baseline locally early enough to check entry points, dependencies and target limits. Local success does not prove acceptance or identical time accounting in the official runtime.
 
-```dot
-digraph rl_pipeline {
-    rankdir=TD;
-    node [shape=box, style="rounded,filled", fillcolor="#f8f9fa", color="#343a40", fontname="Helvetica"];
-    
-    "1. Simulation Architecture" -> "Vectorizable Tensor Logic?" [shape=diamond, fillcolor="#e9ecef"];
-    "Vectorizable Tensor Logic?" -> "Pure JAX GPU Pipeline (Zero Host-Device Transfer)" [label="Yes (Dense Tensor)"];
-    "Vectorizable Tensor Logic?" -> "Rust / C++ Engine (PyO3/Rayon + Pinned Zero-Copy)" [label="No (Irregular Graph/Branching)"];
-    "Pure JAX GPU Pipeline (Zero Host-Device Transfer)" -> "2. Policy Initialization";
-    "Rust / C++ Engine (PyO3/Rayon + Pinned Zero-Copy)" -> "2. Policy Initialization";
-    
-    "2. Policy Initialization" -> "Complex Action Space / Sparse Rewards?" [shape=diamond, fillcolor="#e9ecef"];
-    "Complex Action Space / Sparse Rewards?" -> "Bootstrap: Behavioral Cloning on Heuristics / Replays" [label="Yes"];
-    "Complex Action Space / Sparse Rewards?" -> "Direct RL from Scratch" [label="No"];
-    "Bootstrap: Behavioral Cloning on Heuristics / Replays" -> "3. Neural Architecture Design";
-    "Direct RL from Scratch" -> "3. Neural Architecture Design";
-    
-    "3. Neural Architecture Design" -> "Entity Transformer + Relational Edge-Attention & 2D RoPE";
-    "Entity Transformer + Relational Edge-Attention & 2D RoPE" -> "4. Stabilized RL Optimization";
-    
-    "4. Stabilized RL Optimization" -> "Multiplayer / Non-Transitive Dynamics?" [shape=diamond, fillcolor="#e9ecef"];
-    "Multiplayer / Non-Transitive Dynamics?" -> "AlphaStar League / Frozen Historical Opponent Pool" [label="Yes"];
-    "Multiplayer / Non-Transitive Dynamics?" -> "Teacher Distillation + Game-Specific Terminal Rewards" [label="No (2-Player)"];
-    "AlphaStar League / Frozen Historical Opponent Pool" -> "5. Submission Deployment Stack";
-    "Teacher Distillation + Game-Specific Terminal Rewards" -> "5. Submission Deployment Stack";
-    
-    "5. Submission Deployment Stack" -> "Sub-100MiB NF4-LSQ Quantization + Dynamic int8 + Test-Time Lookahead Search";
-}
-```
+Choose useful work within the user's scope and compute budget. Do not replace a research task with unrequested long training, or assume a repository contains its authors' weights and datasets.
 
----
+## Choose the next experiment
 
-## The 5-Phase Competitive RL Protocol
+| Evidence | Candidate direction |
+| --- | --- |
+| Strong rules/tapes already work | Improve the heuristic or use valid demonstrations for BC |
+| Short-horizon planning is affordable | Bounded search; validate simulator fidelity and serving cost |
+| Good teachers, sparse reward, complex actions | Small BC policy, complete-game validation, then an RL probe if useful |
+| Simple actions and informative reward | Consider direct RL with a small model |
+| Small policy is limited by representation | Compare compact grid, pooled/entity or graph models according to the game |
+| Simulation or transfer dominates cost | Optimize the measured bottleneck; custom engines need parity checking |
 
-### Phase 1: Environment Diagnostics & Acceleration
-*Before writing neural network code, benchmark the raw simulation throughput.*
-1. **Benchmark Baseline Throughput**: Measure simulator, feature encoding, inference, transfers and updates separately. Project the chosen experiment's wall time from measured throughput; there is no universal steps/sec threshold for convergence.
-2. **Select Acceleration Backend**:
-   - **Pure JAX on GPU (`jax.jit`, `jax.vmap`)**: When dynamics can be vectorized into fixed-dimension tensors. Eliminates CPU-to-GPU memory transfer bottlenecks entirely, reaching up to $500,000+\text{ sps}$ on a single GPU (used by 8th place *Bradley* & 9th place *Boey*).
-   - **Compiled Rust (PyO3 + Rayon) or C++**: When game rules require dynamic allocations, variable-length event queues, or irregular graph traversals. Use Rayon thread pools with preallocated pinned CPU memory buffers wrapped directly by PyTorch tensors (used by 1st place *Pressman*, 6th place *flg*, 10th place *Liu*).
-3. **Replay Parity Gate**: Validate state, action, reward, observation visibility and terminal semantics against the pinned official environment before relying on a custom engine. Include adversarial boundary cases; require exact agreement for discrete rules and define any floating-point tolerances explicitly.
-> **Detailed Guide:** See [`references/simulator_acceleration.md`](references/simulator_acceleration.md) for Rust Rayon bindings, JAX vectorization patterns, and parity regression harnesses.
+Entity Transformers, compiled Rust/JAX simulators, PPO, opponent leagues and quantization are options. Model size, optimizer, rollout length, discount and serving limits are not universal defaults. An original tape's schedule may break when learned choices change resources; use compatible plans or a reactive executor.
 
----
+## Demonstration and actor-input invariants
 
-### Phase 2: Observation & Action Space Structuring
-*Structure representations to maximize learnability and geometric fidelity.*
-1. **Entity-Based Observations**: Represent game boards as sets of distinct entity tokens (planets, units, obstacles) rather than rigid spatial grids.
-2. **Continuous 2D Rotary Position Embeddings (2D RoPE)**:
-   - For environments with continuous coordinates $(x, y)$, project 2D coordinates into orthogonal frequency bands. Preserves continuous relative distance and angle in self-attention without artificial grid discretization (8th place *Bradley*).
-3. **Relational Edge Tensors & Edge-Attention**:
-   - Pairwise features (flight times, Euclidean distances, collision risks) should modulate self-attention logits directly: $\text{Attention}(Q, K, E) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d}} + W_e E\right) V$. This provides an inductive bias for physics and topology without deep graph convolutions (6th place *flg*).
-4. **Deterministic Future Forecasting Tensors ("Planet Future")**:
-   - Compute exact future arrivals of in-flight fleets over the next $K$ turns analytically and feed this tensor as input features to prevent the policy from having to count fleets across temporal sequences (9th place *Boey*).
-5. **The Discrete Intent Factorization**:
-   - Let the neural policy predict high-level discrete tactical intent (`source_entity`, `target_entity`), and embed a deterministic analytical solver in the environment to compute the exact physical trajectories.
-6. **Continuous Bounded Sizing**: For continuous allocations (e.g. ship count or bid percentage), use a **Truncated Discretized Logistic Mixture Head** over the valid dynamic range $[S_{\min}, S_{\max}]$.
+- Identify the teacher, episode, player position and source version explicitly. Derive observation/action alignment from this game's replay format; Kaggriculture's offset is not a generic rule.
+- Keep entire episodes/scenarios within one training or validation split. Deduplicate repeated game/seat rows and account for shared teacher lineage.
+- Preserve proposed, repaired and executed actions when they differ. Define labels using the actual resolver and action vocabulary; filter impossible/unexecuted commands or represent their semantics explicitly.
+- Train the actor from the observation it can receive at inference. Batched multi-player evaluation must keep each actor's private information isolated. Forecast features may use visible evidence and known deterministic dynamics, not hidden future randomness.
+- Verify that learned choices affect emitted actions and that conditional decisions reserve shared resources in execution order. Legality alone does not establish strategic usefulness.
 
----
+## Learning and improvement
 
-### Phase 3: Neural Policy Architecture
-*Deploy scalable, permutation-invariant multi-agent models.*
-1. **Unified Multi-Entity Transformer**:
-   - Independent MLP stems project distinct entity types into a shared embedding space ($D=256 - 768$).
-   - Pre-norm residual Transformer trunk (12 to 38 blocks, 8 to 16 attention heads).
-2. **Specialized Control & Workspace Tokens**:
-   - **Player Summary Tokens**: Encodes macro economy, alive status, and player identity.
-   - **Global Summary Token**: Encodes turn clock, step counter, and game phase.
-   - **Board Scratch Tokens**: Learned embedding vectors that serve as a shared global workspace for inter-entity attention without supervisory loss.
-3. **Single-Pass Multi-Player Evaluation**:
-   - Compute actions and win probabilities for all active players in **one single forward evaluation**, cutting training and rollout compute by $2\times - 4\times$.
-4. **Multi-Player Softmax Value Critic**:
-   - Predict the joint categorical win probability distribution over active players ($\sum \hat{p}_i = 1$).
-> **Detailed Guide:** See [`references/model_architectures.md`](references/model_architectures.md) for PyTorch implementations of entity transformers, relational edge-attention, 2D RoPE, and mixture heads.
+Start with a feasible model and data subset. Inspect host expansion and batch memory, not just compressed dataset sizes. BC success requires complete held-out games and useful rare decisions as well as supervised loss. Student mistakes can move play outside the teacher's recorded states.
 
----
+For actor-critic RL, decide whether a separate value-fitting stage is useful before full updates. Frozen-actor critic fitting is Kaggriculture's adopted procedure, not mandatory for every algorithm. Align rewards, discounting and returns with the actual score/horizon; preserve terminal outcomes and handle collection cutoffs correctly.
 
-### Phase 4: Distributed PPO & Training Stabilization
-*Scale policy optimization without catastrophic forgetting, circular meta-drift, or stalling.*
-1. **Curriculum Warm-Starting (Behavioral Cloning)**:
-   - In sparse-reward environments, bootstrap cold-start policies with Behavioral Cloning (BC) on heuristic bots or top player replays before transitioning to pure PPO (2nd place *simjeg*, 5th place *TonyK*).
-2. **Distributed Scaled PPO**:
-   - Vectorize across $2,048 - 8,192$ parallel environments with $T=64$ rollouts.
-   - Single-epoch PPO updates to prevent overfitting to recent trajectories.
-   - **Muon + AdamW Optimizers**: Use Muon for 2D attention/linear matrices ($\ge 25M$ params) and AdamW for 1D embeddings/biases.
-3. **Teacher Distillation Anchor**:
-   - Anchor policy updates against a historical `checkpoint_last_best.pt` using Policy KL-divergence and Critic Cross-Entropy loss terms.
-   - **Promotion Gate Example**: A 70% win rate over 2,048 games is one historical recipe, not a universal requirement. Select a gate using the opponent panel, uncertainty and cost; Kaggriculture's public preset keeps its reference fixed.
-4. **Anti-Stall Reward Shaping**:
-   - Choose discounting from the episode's objective. Fixed-season economics can appropriately use $\gamma=1.0$ without step penalties; Kaggriculture's released recipe does so.
-   - **Step-Conditioned Terminal Bonus**: When early victory is possible and desired, test quick-win bonuses (e.g. Orbit Wars 2nd place *simjeg*). Do not apply this to a season that always ends at a fixed horizon.
-5. **Game-Theoretic Dynamics (2-Player vs Multiplayer)**:
-   - **2-Player**: Self-play with teacher regularization is a candidate training scheme; it does not guarantee a minimax policy. Evaluate against independent heuristics and historical strategies to expose blind spots.
-   - **Multiplayer (3+ Players)**: Pure self-play risks non-transitive Rock-Paper-Scissors cycles. Maintain a **Frozen Historical Opponent Pool** (e.g. 50% current self-play, 35% frozen historical checkpoints, 15% heuristic/exploiters) to maintain policy diversity (5th place *TonyK*).
-> **Detailed Guide:** See [`references/rl_training_stability.md`](references/rl_training_stability.md) for PPO hyperparameter tables, BC warm-start pipelines, anti-stall reward curves, and league matchmaking algorithms.
+For PPO, retain sampled action IDs, old log probabilities, values, conditional masks, temperatures and any forced-factor flags. Before an update, recomputation should agree with collection and the ratio should be approximately one. Use the ratio/clipped objective; plain `-log_probability * advantage` is not PPO-Clip. Account explicitly for deterministic controllers instead of treating forced replacements as sampled choices.
 
----
+Distinguish BC teachers from neural probability-distribution references used for KL regularization. An initial random model is not a competent teacher. Use a fixed reference or promotion scheme only when justified by the experiment; there is no universal promotion win rate.
 
-### Phase 5: Submission Packaging, Quantization & Latency Guardrails
-*Navigate strict Kaggle sandbox constraints ($\le 100\text{ MiB}$ file size, $1.0\text{s}$ turn latency on slow CPU).*
-1. **Checkpoint Compression**:
-   - Quantize 2D linear weights using **4-bit NormalFloat (NF4/NF5)** with group size 128 and Least-Squares (LSQ) scale refinement.
-   - Compresses 200M parameter models ($800\text{ MiB}$) down to **$90.7\text{ MiB}$**, fitting comfortably inside the 100MiB archive cap while retaining ~40% win rate against unquantized fp32.
-2. **Streaming Dequantizer**:
-   - Load and dequantize tensors one-by-one at container startup directly into model buffers, avoiding full state-dict memory spikes.
-3. **Dynamic int8 CPU Inference**:
-   - Convert non-output linear layers to signed int8 via `torch.ao.quantization.quantize_dynamic`, cutting inference latency from $2,500\text{ ms}$ to $<450\text{ ms}$.
-4. **Test-Time Rollout Lookahead Search**:
-   - Combine neural policy priors with a shallow $1\text{--}2$ turn lookahead rollout using the compiled simulator core to verify tactical survival and prune obvious blunders (6th place *flg*).
-5. **Hierarchical Decoupling**:
-   - Separate high-level strategic target selection (evaluated every $N$ turns by neural policy) from low-level local tactical execution handled turn-by-turn by an analytical solver (10th place *Liu*).
-6. **Circuit-Breaker Fallback Cascade**:
-   - Monitor `observation.remainingOverageTime`.
-   - If overage time drops below $1.0\text{ second}$, immediately trigger an automatic handoff to a packaged, lightweight $5\text{M}$ parameter model ($<30\text{ ms}$ inference).
-> **Detailed Guide:** See [`references/submission_quantization_serving.md`](references/submission_quantization_serving.md) for complete NF4-LSQ encoders, test-time rollout searchers, streaming loaders, and dual-model fallback wrappers.
+Diagnose failures by opponent/scenario/phase. Improve a teacher or controller for those cases, collect targeted demonstrations when useful, and compare the resulting learner against the preserved evaluation panel. Teacher refinement, search, more data and architecture growth are separate experiments. Two-player games can also have non-transitive strategies; self-play alone does not establish broad strength.
 
----
+## Evaluate and retain evidence
 
-## Quick Reference & Hyperparameter Cheat Sheet
+Track the competition's actual outcome metric plus relevant diagnostics: action failures, waste, terminal inventory, survival, latency or other game-specific indicators. Preserve seed/scenario clusters and player assignments when estimating uncertainty. One mirror match, own earnings against PASS, or a public rating snapshot is insufficient evidence of generalization.
 
-| Problem Domain | Recommended Solution | Key Parameters / Code Reference |
-| :--- | :--- | :--- |
-| **Simulator Throughput (CPU)** | Rust (PyO3 + Rayon) / C++ | `par_iter_mut()`, preallocated pinned CPU buffers (`pin_memory=True`) |
-| **Simulator Throughput (GPU)** | Pure JAX JIT Environment | `jax.vmap`, `jax.lax.scan`, zero host-to-device memory copying ($500\text{k+ sps}$) |
-| **Variable Entity Boards** | Entity-Centric Transformer | Shared 768-d embedding, 17 special tokens (Player, Global, Scratch) |
-| **Spatial Coordinates** | Continuous 2D RoPE | Orthogonal rotation frequencies along $(x, y)$ axes |
-| **Pairwise Physics Relations** | Relational Edge-Attention | Attention bias $Q K^T / \sqrt{d} + W_e E$ injecting distances/flight times |
-| **Future Planning Signals** | Planet Future Forecasting | Analytical future-arrival garrison tensor projected over $K$ horizons |
-| **Action Generation** | Discrete Intent + Solver | $Q \cdot K^T / \sqrt{d}$ target selection + analytical physical intercept |
-| **Continuous Fleet Sizing** | Truncated Logistic Mixture | 8 components over $[S_{\min}, S_{\max}]$, normalized sigmoid means |
-| **Sparse-Reward Cold Start** | Behavioral Cloning Bootstrap | Supervised pretraining on heuristics/replays before RL fine-tuning |
-| **Optimization Stability** | Teacher Regularization | $\alpha_{\text{KL}} D_{\text{KL}}(\pi_{\text{teacher}} \|\, \pi)$; choose fixed or promoted references and task-specific evaluation gates |
-| **Terminal Reward** | Match the game objective | Early-victory games may benefit from timing bonuses; fixed-season Kaggriculture uses win/draw/loss with $\gamma=1$ |
-| **Multi-Player Dynamics** | Frozen Opponent League | 50% self-play, 35% historic checkpoints, 15% exploiters |
-| **100MiB Submission Cap** | Grouped NF4-LSQ Codebook | Group size 128, fp16 scales, least-squares scale fitting ($90.7\text{ MiB}$) |
-| **Tactical Blunder Pruning** | Test-Time Lookahead Search | 1-2 turn shallow forward simulation evaluating survivability |
-| **CPU Latency Budget** | Dynamic int8 + Fallback | `quantize_dynamic(model, {nn.Linear}, qint8)` + 5M model fallback if bank $<1.0\text{s}$ |
+Verify state, reward, terminal and observation-visibility parity before trusting a custom simulator. Require exact discrete-rule agreement and explicit floating-point tolerances; include boundary cases appropriate to the game.
 
----
+Benchmark the exact packaged controller under target-like conditions. Apply compression, search budgets or fallback behavior when measured limits call for them, and retest outcome quality after those changes. Keep the strongest verified agent and record source/configuration, data, weights, commands, measured costs and results separately.
 
-## Common Mistakes & Anti-Patterns
+## Detailed references and case studies
 
-| Anti-Pattern | Why It Fails | Battle-Tested Fix |
-| :--- | :--- | :--- |
-| **Cold-Start RL Exploration Trap** | Pure random exploration in complex multi-agent environments rarely encounters winning terminal states. | Warm-start policy with **Behavioral Cloning (BC)** on strong heuristic bots or top match replays before RL. |
-| **Rollout/Update Mask Mismatch** | Scoring sampled actions under different legal or sequential supports corrupts policy probability bookkeeping. | Use identical conditional masks and temperature in sampling and log-probability recomputation; exclude deterministic forced factors from actor loss. Whether to introduce masks early is game-specific. |
-| **Generic Discount/Step-Penalty Recipe** | Early-win incentives can distort a fixed-horizon investment game; heavy discounting weakens distant terminal outcomes. | Match reward and discount to the task. Kaggriculture uses $\gamma=1$ and terminal win/draw/loss; test shaping as an explicit ablation. |
-| **Pure Self-Play in Multiplayer ($N \ge 3$)** | Multi-agent environments have non-transitive dynamics; pure self-play leads to circular overfitting (Rock-Paper-Scissors). | Maintain a **Frozen Historical Opponent Pool** to evaluate against past generations and prevent meta-drift. |
-| **Single-Player Forward Evaluation** | Running $N$ separate forward passes per state wastes $2\times - 4\times$ rollout compute and GPU VRAM. | Unified Single-Pass Transformer: Concatenate all players' tokens into one sequence and predict all policies simultaneously. |
-| **Uniform INT4 Quantization** | Naive uniform quantization destroys attention weight distributions, causing catastrophic policy collapse. | Use **NormalFloat 4 (NF4)** codebook quantization with group size 128 and Least-Squares (LSQ) scale refinement. |
-| **Full State-Dict Deserialization** | Dequantizing the entire 800MiB model at once on Kaggle CPU causes out-of-memory container crashes. | Use **streaming dequantization**, reconstructing one parameter tensor at a time directly into preallocated model storage. |
-| **Lookahead-Blind Tactical Blunders** | Large transformers can occasionally miss immediate 1-ply tactical traps or suicide flights. | Add a **shallow test-time rollout search** (1–2 turns) using the fast simulation engine to filter suicidal candidate moves. |
-| **Unprotected CPU Latency** | Relying solely on a heavy model risks disqualification if Kaggle assigns a throttled CPU core. | Implement a **circuit-breaker fallback cascade**: auto-switch to a sub-5M model when bank overage drops below $1.0\text{ second}$. |
-
----
-
-## Complete Competition Case Studies
-
-- **Kaggriculture (provisional current 1st, October 2, 2026)**: [Solution and public-notebook comparison](../../../Handbook/reinforcement-learning/kaggriculture.md) — Tape routing versus learned state-conditioned control, alternating BC/PPO, targeted heuristic demonstrations, sequential masks and final-day search. [Implementation reference](references/kaggriculture.md).
-- **Orbit Wars (1st–10th Place Post-Mortem)**: [Deep Dive Post-Mortem](../../../Handbook/reinforcement-learning/orbit-wars.md) — Comprehensive comparative autopsy covering the 200M Transformer, Rust engine acceleration, pure JAX JIT pipelines, NF4-LSQ quantization, Relational Edge-Attention, 2D RoPE, anti-stall reward curves, and test-time lookahead search.
+- [Simulator acceleration](references/simulator_acceleration.md): Rust/JAX and parity patterns; use after profiling identifies a need.
+- [Model architectures](references/model_architectures.md): entity/relational representations and action heads; verify visibility and serving cost before adopting.
+- [Training stability](references/rl_training_stability.md): example PPO, teacher and league recipes; choose reward/horizon settings from the game.
+- [Quantization and serving](references/submission_quantization_serving.md): example compression/search/fallback implementations; derive current submission limits first.
+- [Kaggriculture](../../../Handbook/reinforcement-learning/kaggriculture.md): BC/PPO, targeted teachers, resource masks and distinct Final A/B controllers. The analyzed October 2, 2026 first-place claim was provisional.
+- [Maze Crawler](../../../Handbook/reinforcement-learning/maze-crawler.md): heuristic targeting and self-play blind spots.
+- [Orbit Wars](../../../Handbook/reinforcement-learning/orbit-wars.md): historical simulation scaling, neural architectures and serving examples.

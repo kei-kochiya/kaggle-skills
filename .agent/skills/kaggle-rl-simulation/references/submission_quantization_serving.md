@@ -1,6 +1,8 @@
 # Submission Quantization, CPU Serving & Fallback Cascades 💾
 
-On Kaggle, training a gold-medal model is only half the battle. Submissions run in an extremely constrained evaluation sandbox:
+**Scope:** Derive limits from the new competition's official runtime documentation and benchmark the exact package. The sizes, timing bank, CPU assumptions and compression results below are historical examples from particular solutions, not platform-wide requirements. Read the [simulation workflow](../SKILL.md) first; small models may not need quantization or a fallback cascade. Example code needs adaptation and outcome/latency checks before use.
+
+The serving examples below address constraints such as:
 1. **Archive Size Constraint**: Strict $\le 100\text{ MiB}$ limit for `submission.tar.gz`.
 2. **Turn Latency Budget**: $1.0\text{ second}$ per turn, plus a $60.0\text{ second}$ overage bank for the entire match.
 3. **Execution Environment**: A single, throttled x86 CPU core without GPU acceleration.

@@ -24,6 +24,8 @@ This repository serves two interconnected purposes:
 
 ### 🚀 Reinforcement Learning & Simulation Competitions
 
+Start with [A head start in the next simulation competition](reinforcement-learning/simulation-competition-starter.md): transferable lessons, baseline/evaluation milestones, algorithm choices and a reusable agent kickoff prompt. Then read the relevant competition case study.
+
 | Competition | Target & Environment | Key Breakthroughs & Winning Techniques | Outcome / Scale | Link |
 | :--- | :--- | :--- | :--- | :--- |
 | **Kaggriculture** | Two-player fixed-season farming with shared dynamic prices | • Replay BC → critic fitting → self-play PPO<br>• Targeted heuristic teachers and typed Transformer tokens<br>• Sequential resource masks, action repair and final-day search<br>• Tape/heuristic/learning notebook comparison | **Provisional current 1st**, Oct 2, 2026<br>10.23M final models<br>8.29M retained games / 11.922B player steps (A) | [Deep Dive](reinforcement-learning/kaggriculture.md) |
@@ -60,6 +62,7 @@ Handbook/
 │   ├── playground-s6e5-f1-pit-stops.md
 │   └── playground-s6e9-will-buy-ev.md
 ├── reinforcement-learning/            # Multi-agent RL & simulation challenges
+│   ├── simulation-competition-starter.md # New-game workflow and agent kickoff prompt
 │   ├── kaggriculture.md               # Tape agents, BC/PPO, masks and heuristic controllers
 │   ├── orbit-wars.md                  # 1st–10th Place Orbit Wars: 200M Transformer, Rust, JAX, NF4
 │   └── maze-crawler.md                # 1st Place Scored BFS Heuristics vs. 3rd Place Deep RL & JAX
@@ -69,7 +72,7 @@ Handbook/
 └── multimodal/                        # Audio, video, graph, and cross-modal tasks
 ```
 
-### Standard Entry Template
+### Tabular Entry Template
 1. **Competition DNA**: Core problem formulation, evaluation metric, dataset characteristics, and leaderboard dynamics.
 2. **EDA & Data Discoveries**: Distribution shifts, synthetic generator quirks, leakages, and anomalies.
 3. **Feature Engineering Playbook**: Mathematical transformations, interaction formulas, encoding schemes, and domain-specific features.
@@ -77,6 +80,18 @@ Handbook/
 5. **Cross-Validation Strategy**: CV scheme setup, alignment with private test splits, and leak-free transformations.
 6. **Ensembling & Post-Processing**: Blending, stacking (Ridge, Nelder-Mead, Hill Climbing), probability/monotonic calibration (CIR), and metric-specific threshold optimization.
 7. **Key Takeaways & Anti-Patterns**: What worked, what failed or caused overfitting, and lessons for future competitions.
+
+### Simulation Entry Template
+
+For simulation writeups, organize the explanation around the game and measured behavior:
+
+1. **Game contract**: Scoring, horizon, player count, visible/private information, randomness and action execution.
+2. **Working baselines**: Rules, tapes, search and learned alternatives, with the scope of inspected source made explicit.
+3. **Evaluation design**: Scenario/seed holdouts, opponent diversity, player-position coverage, sample counts and uncertainty.
+4. **Representation and controllers**: Observation/action encoding, shared-resource decisions, repairs and serving behavior.
+5. **Data and learning**: Teacher provenance, replay alignment, episode splits, BC/RL stages, masks and terminal returns.
+6. **Compute and packaging**: Measured bottlenecks, simulator parity, RAM/VRAM, CPU costs and actual submission limits.
+7. **Transfer and evidence limits**: What can be reused, what must be re-derived, and which claims are reported, inspected or experimentally verified.
 
 ---
 
@@ -87,5 +102,5 @@ Antigravity automatically discovers and activates skills located inside [`.agent
 | Skill Name | Purpose | Location |
 | :--- | :--- | :--- |
 | **`kaggle-tabular-playbook`** | Complete end-to-end tabular competition runbook (EDA, formula discovery, OOF Target Encoding, RealMLP, GBDTs, CIR calibration, Logit Stacking, Rank Blending) | [`.agent/skills/kaggle-tabular-playbook/SKILL.md`](../.agent/skills/kaggle-tabular-playbook/SKILL.md) |
-| **`kaggle-rl-simulation`** | Complete competitive reinforcement learning & simulation runbook (Rust/JAX vector envs, entity transformers, single-pass multi-player heads, stabilized PPO, NF4 quantization, CPU fallback cascades) | [`.agent/skills/kaggle-rl-simulation/SKILL.md`](../.agent/skills/kaggle-rl-simulation/SKILL.md) |
+| **`kaggle-rl-simulation`** | New-game kickoff, heuristic/search/BC/RL selection, replay and probability correctness, evaluation, profiling and submission checks | [`.agent/skills/kaggle-rl-simulation/SKILL.md`](../.agent/skills/kaggle-rl-simulation/SKILL.md) |
 | **`kaggle-competition-distiller`** | Reusable agent workflow to intake raw competition files/notebooks, reverse-engineer winning recipes, and produce Handbook entries + Agent Skills | [`.agent/skills/kaggle-competition-distiller/SKILL.md`](../.agent/skills/kaggle-competition-distiller/SKILL.md) |

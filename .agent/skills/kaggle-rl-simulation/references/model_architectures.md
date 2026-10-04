@@ -1,6 +1,8 @@
 # Neural Policy & Value Architectures for Competitive Games 🧠
 
-In complex simulation environments (e.g. multi-planet space conquest, grid RTS games, economic bidding), fixed-size convolutional or feedforward networks struggle with **variable entity counts**, **spatial permutation invariance**, and **multi-agent game dynamics**.
+Choose a representation from the game's structure and measured limitations of a small baseline. Grid networks, feedforward summaries, pooling, graph models and entity Transformers can each be useful. Variable entities do not by themselves require a large Transformer.
+
+**Scope:** The dimensions, planets/fleets and decoder examples below come from particular competitive solutions. They are optional designs, not new-game defaults. Read the [simulation workflow](../SKILL.md) first. In partially observed games, keep each actor's allowed input isolated even when batching players through a shared model; a shared pass cannot expose other players' private data. Benchmark actual serving cost before relying on a claimed speedup.
 
 This reference guide details the architecture of **Entity-Centric Transformers**, **Single-Pass Multi-Player Policy Heads**, and **Continuous-Discrete Hybrid Action Decoders** distilled from top-tier competitive RL solutions.
 
@@ -187,7 +189,7 @@ class LogisticMixtureFleetSizingHead(nn.Module):
 
 ## 4. Multi-Player Softmax Value Head
 
-In multi-agent simulation games, scalar value heads ($V(s) \in \mathbb{R}$) fail to account for relative survival and non-zero-sum game dynamics. The critic evaluates the **joint probability distribution over which player wins**:
+For an objective with one exclusive winner, a softmax over players is one way to model winner probabilities. Scalar or per-player value heads remain valid choices for other rewards. Draws, shared wins or rank/score objectives need targets and output support that represent those outcomes. The code below illustrates an exclusive-winner head:
 
 ```python
 class MultiPlayerWinProbCritic(nn.Module):
@@ -211,7 +213,7 @@ class MultiPlayerWinProbCritic(nn.Module):
 ```
 
 ### Advantage Computation for 2-Player & 4-Player Modes
-- In **2-player zero-sum matches**, convert player $p$'s win probability $\hat{p}_p \in [0, 1]$ directly to a symmetric $[-1, 1]$ value target:
+- In **2-player win/loss matches without draws**, convert player $p$'s win probability $\hat{p}_p \in [0, 1]$ to a symmetric $[-1, 1]$ value target. With draws, use outcome probabilities consistent with the reward (e.g. $P(\text{win}) - P(\text{loss})$ for `+1/0/-1`):
   $$V_p(s) = 2 \hat{p}_p - 1$$
 - In **4-player matches**, use the win probability $\hat{p}_p$ as the baseline for Generalized Advantage Estimation (GAE):
   $$\delta_t^p = r_t^p + \gamma \hat{p}_{t+1}^p - \hat{p}_t^p$$

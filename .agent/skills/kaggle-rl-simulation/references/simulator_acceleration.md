@@ -1,6 +1,8 @@
 # Simulator Acceleration & Parity Verification Playbook 🏎️
 
-In competitive reinforcement learning and simulation benchmarks on Kaggle, **environment throughput is the single greatest bottleneck to final Elo**. The difference between a standard Python environment (~100 steps/sec) and an optimized compiled engine (~120,000+ steps/sec) represents a **1,000× training speedup**, enabling billions of self-play steps within modest compute budgets.
+Simulation can be a major training bottleneck. Profile it alongside encoding, inference, transfers and updates before investing in a new engine. The throughput figures below are historical examples, not predictions for a new game or hardware arrangement.
+
+**Scope:** Use the [new-competition workflow](../SKILL.md) to establish the baseline and measured need first. Geometry, player counts and Rust/JAX snippets here illustrate particular designs. Require observation-visibility, discrete-rule, reward and terminal parity; define floating-point tolerances when exact agreement is not appropriate. Recheck APIs and source behavior before adapting an example.
 
 This reference guide outlines the standard operating procedure for building, accelerating, and verifying high-throughput simulation environments in **Rust (PyO3/Rayon)** and **JAX**, backed by automated replay parity testing against official Kaggle episode logs.
 
