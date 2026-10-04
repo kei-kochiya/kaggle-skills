@@ -11,6 +11,8 @@ Use for the advanced `kaggriculture` simulation, its tape agents, replay imitati
 
 Primary sources: [discussion](https://www.kaggle.com/competitions/kaggriculture/discussion/745073), [pinned source release](https://github.com/msdsm/kaggriculture-solution/tree/84057a0fda4238ccdebc46f9bf5496c6c4b2e00d), [handbook comparison](../../../../Handbook/reinforcement-learning/kaggriculture.md).
 
+For an explanation request, use handbook sections 1–6: they define the learning terms, show a seed-conflict example and compare the final controllers. For implementation planning, sections 7–8 give the proposed milestones; the appendices preserve exact source versions, dimensions, settings and audit evidence. Distinguish the team's reported recipe from the smaller experiments proposed for a tape user.
+
 ## Pin mechanics and replay semantics
 
 The inspected release pins `kaggle-environments==1.32.7` and `kagg-engine==0.3.24`. Preserve those versions for reproduction; verify current competition rules separately when adapting to another environment version. Record interpreter/config hashes and source/license provenance.
