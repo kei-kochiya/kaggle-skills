@@ -1,0 +1,20 @@
+{
+  "topic_id": 751369,
+  "metadata": {
+    "id": 751369,
+    "title": "3rd Place Solution - BC -> self-play PPO + inference-time post-processing",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-10-21T15:00:19.495000"
+  },
+  "messages": [
+    {
+      "id": 3542185,
+      "authorName": "",
+      "postDate": "2026-10-21T15:00:19.497000",
+      "votes": 5,
+      "content": "<p>Thank you to Kaggle and the hosts for Kaggriculture, and to everyone who competed. The game was deep enough that new strategies kept appearing until the last week, and we learned a lot from the public discussions and from playing against all of you.</p>\n<p>Our team DSM (@denden12, <a href=\"/shimishige\" target=\"_blank\">@shimishige</a>, <a href=\"/masspeaks\" target=\"_blank\">@masspeaks</a>) finished 3rd, and we have posted our solution write-up here:\n<a href=\"https://kaggle.com/competitions/kaggriculture/writeups/kaggriculture-3rd-place-dsm-solution\" target=\"_blank\">https://kaggle.com/competitions/kaggriculture/writeups/kaggriculture-3rd-place-dsm-solution</a></p>\n<p>The code and the weights are public as well:</p>\n<ul>\n<li>Code: <a href=\"https://github.com/seven320/kaggriculture-3rd-place-solution\" target=\"_blank\">https://github.com/seven320/kaggriculture-3rd-place-solution</a></li>\n<li>Weights: <a href=\"https://www.kaggle.com/datasets/denden12/kaggriculture-dsm-3rd-place-weights\" target=\"_blank\">https://www.kaggle.com/datasets/denden12/kaggriculture-dsm-3rd-place-weights</a></li>\n</ul>"
+    }
+  ]
+}

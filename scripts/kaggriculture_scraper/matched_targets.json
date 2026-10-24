@@ -1,0 +1,170 @@
+[
+  {
+    "target": "745073",
+    "desc": "1st place initial discussion",
+    "topic": {
+      "id": 745073,
+      "title": "[1st Place (currently)] A preview of our solution: BC, Self-Play PPO, and Heuristics \u2014 M & M & P & Q",
+      "authorName": "",
+      "commentCount": 17,
+      "votes": 107,
+      "postDate": "2026-10-02T03:38:23.271000"
+    }
+  },
+  {
+    "target": "farmcore-a-one-pass-transformer-trained-on-what-t",
+    "desc": "Farmcore one-pass transformer",
+    "topic": {
+      "id": 750068,
+      "title": "Farmcore: a one-pass transformer trained on what the engine executed",
+      "authorName": "",
+      "commentCount": 4,
+      "votes": 24,
+      "postDate": "2026-10-16T21:22:46.347000"
+    }
+  },
+  {
+    "target": "its-sft-all-the-way-down",
+    "desc": "It's SFT all the way down",
+    "topic": {
+      "id": 750159,
+      "title": "It\u2019s SFT all the way down",
+      "authorName": "",
+      "commentCount": 2,
+      "votes": 13,
+      "postDate": "2026-10-17T02:57:57.963000"
+    }
+  },
+  {
+    "target": "6th-place-write-up",
+    "desc": "6th place write-up",
+    "topic": {
+      "id": 752035,
+      "title": "6th place write-up",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 3,
+      "postDate": "2026-10-23T14:32:09.427000"
+    }
+  },
+  {
+    "target": "7th-place-my-solution-only-behavior-cloning-t",
+    "desc": "7th place DECEM only BC",
+    "topic": {
+      "id": 751681,
+      "title": "[7th Place] My solution: only behavior cloning + two small rules",
+      "authorName": "",
+      "commentCount": 2,
+      "votes": 4,
+      "postDate": "2026-10-22T13:28:42.483000"
+    }
+  },
+  {
+    "target": "from-reinforcement-learning-to-a-final-bc-agent",
+    "desc": "From RL to final BC agent",
+    "topic": {
+      "id": 750403,
+      "title": "9th: From Reinforcement Learning to a Final BC Agent",
+      "authorName": "",
+      "commentCount": 3,
+      "votes": 8,
+      "postDate": "2026-10-18T06:26:34.050000"
+    }
+  },
+  {
+    "target": "10th-place-bc-ppo-on-a-single-rtx-5090",
+    "desc": "10th place BC+PPO on RTX 5090",
+    "topic": {
+      "id": 750617,
+      "title": "10th place: BC + PPO on a Single RTX 5090",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 7,
+      "postDate": "2026-10-19T07:20:13.277000"
+    }
+  },
+  {
+    "target": "gold-medalist-with-70-of-compute",
+    "desc": "Gold medalist with 70% of compute",
+    "topic": {
+      "id": 749586,
+      "title": "Gold Medal Solution with Under $60 of Compute",
+      "authorName": "",
+      "commentCount": 1,
+      "votes": 40,
+      "postDate": "2026-10-15T14:48:40.227000"
+    }
+  },
+  {
+    "target": "19th-place-solo-gold-a-behaviour-clone",
+    "desc": "19th place solo gold a behaviour clone",
+    "topic": {
+      "id": 750220,
+      "title": "19th place (solo gold): a behaviour clone of the 1st, 3rd and 7th place teams",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 5,
+      "postDate": "2026-10-17T14:48:34.523000"
+    }
+  },
+  {
+    "target": "22nd-place-behavior-cloning-and-ppo-with-diverse",
+    "desc": "22nd place BC and PPO with diverse",
+    "topic": {
+      "id": 751866,
+      "title": "[22nd Place] Behavior Cloning and PPO with Diverse Opponents",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 0,
+      "postDate": "2026-10-22T23:59:34.437000"
+    }
+  },
+  {
+    "target": "cloning-the-best-farmer-on-one-rtx-5070",
+    "desc": "Cloning the best farmer on one RTX 5070",
+    "topic": {
+      "id": 749669,
+      "title": "Cloning the best farmer on Colab",
+      "authorName": "",
+      "commentCount": 4,
+      "votes": 9,
+      "postDate": "2026-10-15T18:26:10.140000"
+    }
+  },
+  {
+    "target": "31th-place-currently-our-writeup-macro-bc-d",
+    "desc": "31st place macro BC",
+    "topic": {
+      "id": 745783,
+      "title": "[24th Place (currently)] Our writeup! Macro BC + Day Compiler",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 15,
+      "postDate": "2026-10-04T11:29:11.785000"
+    }
+  },
+  {
+    "target": "monsaraida-27th-place-solution",
+    "desc": "monsaraida 27th place solution",
+    "topic": {
+      "id": 750212,
+      "title": "27th Place (Gold) Solution: monsaraida",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 2,
+      "postDate": "2026-10-17T09:38:50.007000"
+    }
+  },
+  {
+    "target": "28th-place-gold-solution-how-we-taught-a-farm-to",
+    "desc": "28th place gold solution",
+    "topic": {
+      "id": 750151,
+      "title": "28th Place Gold Solution \u2014 How We Taught a Farm to Make Decisions",
+      "authorName": "",
+      "commentCount": 0,
+      "votes": 4,
+      "postDate": "2026-10-17T01:58:30.150000"
+    }
+  }
+]

@@ -28,6 +28,8 @@ Choose useful work within the user's scope and compute budget. Do not replace a 
 | Evidence | Candidate direction |
 | --- | --- |
 | Strong rules/tapes already work | Improve the heuristic or use valid demonstrations for BC |
+| Micro-logistics/routing causes collisions | Hierarchical Macro-BC (dawn intent) + deterministic micro compiler |
+| Opening has high entropy, endgame is mathematical | Split-horizon hybrid: Neural BC opening + combinatorial/search endgame planner |
 | Short-horizon planning is affordable | Bounded search; validate simulator fidelity and serving cost |
 | Good teachers, sparse reward, complex actions | Small BC policy, complete-game validation, then an RL probe if useful |
 | Simple actions and informative reward | Consider direct RL with a small model |
@@ -40,7 +42,9 @@ Entity Transformers, compiled Rust/JAX simulators, PPO, opponent leagues and qua
 
 - Identify the teacher, episode, player position and source version explicitly. Derive observation/action alignment from this game's replay format; Kaggriculture's offset is not a generic rule.
 - Keep entire episodes/scenarios within one training or validation split. Deduplicate repeated game/seat rows and account for shared teacher lineage.
+- **Executed-Action Invariant (The Farmcore Principle)**: In simulations where the engine silently drops or rejects invalid actions, train strictly on state changes the engine applied rather than raw player orders. Cloning submitted orders trains the policy to emit empty/phantom actions.
 - Preserve proposed, repaired and executed actions when they differ. Define labels using the actual resolver and action vocabulary; filter impossible/unexecuted commands or represent their semantics explicitly.
+- **Conditioning over Filtering**: Condition on (Team/Style, Recency, Outcome). At test time, prompt the policy with Style = TopTeam, Recency = Max, Outcome = Win.
 - Train the actor from the observation it can receive at inference. Batched multi-player evaluation must keep each actor's private information isolated. Forecast features may use visible evidence and known deterministic dynamics, not hidden future randomness.
 - Verify that learned choices affect emitted actions and that conditional decisions reserve shared resources in execution order. Legality alone does not establish strategic usefulness.
 
@@ -70,6 +74,6 @@ Benchmark the exact packaged controller under target-like conditions. Apply comp
 - [Model architectures](references/model_architectures.md): entity/relational representations and action heads; verify visibility and serving cost before adopting.
 - [Training stability](references/rl_training_stability.md): example PPO, teacher and league recipes; choose reward/horizon settings from the game.
 - [Quantization and serving](references/submission_quantization_serving.md): example compression/search/fallback implementations; derive current submission limits first.
-- [Kaggriculture](../../../Handbook/reinforcement-learning/kaggriculture.md): BC/PPO, targeted teachers, resource masks and distinct Final A/B controllers. The analyzed October 2, 2026 first-place claim was provisional.
+- [Kaggriculture](../../../Handbook/reinforcement-learning/kaggriculture.md): Grandmaster handbook covering all 4 gold medal archetypes (Executed-Label BC, Macro-BC + Day Compiler, Hybrid Opening + Rust Planner, BC → Pre-Warm → PPO), fast engines (kagsim, Rust 29.8k g/s), and inference guardrails.
 - [Maze Crawler](../../../Handbook/reinforcement-learning/maze-crawler.md): heuristic targeting and self-play blind spots.
 - [Orbit Wars](../../../Handbook/reinforcement-learning/orbit-wars.md): historical simulation scaling, neural architectures and serving examples.

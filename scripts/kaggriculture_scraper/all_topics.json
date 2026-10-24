@@ -1,0 +1,2338 @@
+[
+  {
+    "id": 751368,
+    "title": "Recap of Competition - Congratulations to the Winners!",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-10-21T15:00:06.571000"
+  },
+  {
+    "id": 731587,
+    "title": "Comment on the final evaluation for this competition",
+    "authorName": "",
+    "commentCount": 11,
+    "votes": 33,
+    "postDate": "2026-07-31T17:03:26.329000"
+  },
+  {
+    "id": 737885,
+    "title": "Beware of scammers asking for source code",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 56,
+    "postDate": "2026-08-27T23:12:03.905000"
+  },
+  {
+    "id": 744277,
+    "title": "[RESOLVED] Servers Overloaded -> Queue times",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 21,
+    "postDate": "2026-09-29T07:55:03.312000"
+  },
+  {
+    "id": 731215,
+    "title": "Daily Top Episodes Dataset",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 52,
+    "postDate": "2026-07-31T00:39:04.850000"
+  },
+  {
+    "id": 730708,
+    "title": "How to get started + Competition's Official Discord",
+    "authorName": "",
+    "commentCount": 11,
+    "votes": 22,
+    "postDate": "2026-07-30T03:28:46.367000"
+  },
+  {
+    "id": 749637,
+    "title": "[3rd place] All Medalists Who BC'd on Our Records MUST Vote!",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 26,
+    "postDate": "2026-10-21T11:24:58.973000"
+  },
+  {
+    "id": 752149,
+    "title": "Suspected Multi-Account Rule Violation in a Kaggle Competition: Use of Two Accounts",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-10-23T20:36:51.080000"
+  },
+  {
+    "id": 752035,
+    "title": "6th place write-up",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-10-23T14:32:09.427000"
+  },
+  {
+    "id": 751866,
+    "title": "[22nd Place] Behavior Cloning and PPO with Diverse Opponents",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-10-22T23:59:34.437000"
+  },
+  {
+    "id": 750403,
+    "title": "9th: From Reinforcement Learning to a Final BC Agent",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 8,
+    "postDate": "2026-10-18T06:26:34.050000"
+  },
+  {
+    "id": 751808,
+    "title": "47th place: teaching a farming agent from replays",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-10-22T20:42:13.477000"
+  },
+  {
+    "id": 751681,
+    "title": "[7th Place] My solution: only behavior cloning + two small rules",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 4,
+    "postDate": "2026-10-22T13:28:42.483000"
+  },
+  {
+    "id": 751741,
+    "title": "Humble Solution",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -2,
+    "postDate": "2026-10-22T16:48:17.960000"
+  },
+  {
+    "id": 751686,
+    "title": "Scripted agents and JEV",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-10-22T13:43:35.696000"
+  },
+  {
+    "id": 751369,
+    "title": "3rd Place Solution - BC -> self-play PPO + inference-time post-processing",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-10-21T15:00:19.495000"
+  },
+  {
+    "id": 749669,
+    "title": "Cloning the best farmer on Colab",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 9,
+    "postDate": "2026-10-15T18:26:10.140000"
+  },
+  {
+    "id": 751262,
+    "title": "Lot to learn",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-10-21T06:33:51.733000"
+  },
+  {
+    "id": 750068,
+    "title": "Farmcore: a one-pass transformer trained on what the engine executed",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 24,
+    "postDate": "2026-10-16T21:22:46.347000"
+  },
+  {
+    "id": 751006,
+    "title": "70th Place Solution \u2014 Replay BC and Teacher Selection",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-10-20T14:28:17.467000"
+  },
+  {
+    "id": 750159,
+    "title": "It\u2019s SFT all the way down",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 13,
+    "postDate": "2026-10-17T02:57:57.963000"
+  },
+  {
+    "id": 750621,
+    "title": "51st Place Solution: Replay BC",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-10-19T08:15:04.197000"
+  },
+  {
+    "id": 750617,
+    "title": "10th place: BC + PPO on a Single RTX 5090",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 7,
+    "postDate": "2026-10-19T07:20:13.277000"
+  },
+  {
+    "id": 750398,
+    "title": "Top 6% in my first Kaggle competition: a hand-written planner with lookups ",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-10-18T05:43:29.420000"
+  },
+  {
+    "id": 750261,
+    "title": "32nd Place Solution - Opening Book & Heuristics",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-10-17T13:52:11.257000"
+  },
+  {
+    "id": 750254,
+    "title": "Bronze: from MuZero to a measured hybrid agent",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-10-17T16:53:22.917000"
+  },
+  {
+    "id": 750220,
+    "title": "19th place (solo gold): a behaviour clone of the 1st, 3rd and 7th place teams",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-10-17T14:48:34.523000"
+  },
+  {
+    "id": 750212,
+    "title": "27th Place (Gold) Solution: monsaraida",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-10-17T09:38:50.007000"
+  },
+  {
+    "id": 750211,
+    "title": "48th Place Solution \u2014 Policy Basin Hopping with Expert Replays",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-10-17T09:28:02.637000"
+  },
+  {
+    "id": 750176,
+    "title": "116th: six weeks with LLM coding agents, and why replays mattered more than RL",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-10-17T14:36:05.673000"
+  },
+  {
+    "id": 750151,
+    "title": "28th Place Gold Solution \u2014 How We Taught a Farm to Make Decisions",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-10-17T01:58:30.150000"
+  },
+  {
+    "id": 750025,
+    "title": "Where medals?",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 35,
+    "postDate": "2026-10-16T18:25:55.255000"
+  },
+  {
+    "id": 745367,
+    "title": "[7th Place (currently)] A preview of my solution: Only Behavior Cloning + two small rules (Published code)",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 58,
+    "postDate": "2026-10-03T04:12:30.389000"
+  },
+  {
+    "id": 749586,
+    "title": "Gold Medal Solution with Under $60 of Compute",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 40,
+    "postDate": "2026-10-15T14:48:40.227000"
+  },
+  {
+    "id": 749775,
+    "title": "26th Place Gold | Macro BC + Day Compiler",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 6,
+    "postDate": "2026-10-16T00:01:31.627000"
+  },
+  {
+    "id": 749461,
+    "title": "275th Place Solution | Shop-Based Farming Heuristics",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 12,
+    "postDate": "2026-10-15T01:39:32.233000"
+  },
+  {
+    "id": 749466,
+    "title": "354th, Silver | Imitating the top without a GPU: daily states as targets, with Claude analyzing the data and solving it autonomously",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-10-15T02:58:09.985000"
+  },
+  {
+    "id": 745152,
+    "title": "Kaggriculture leaderboard statistics + interactive notebook!",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 16,
+    "postDate": "2026-10-02T14:35:01.558000"
+  },
+  {
+    "id": 749473,
+    "title": "From Production Optimization to Competitive Farming: My Kaggriculture Solution",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-10-15T04:56:24.503000"
+  },
+  {
+    "id": 749460,
+    "title": "RL PPO Light Layer on Base Layer; Final Rank 1231/10148 (4362.2 Final Score)",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-10-15T01:10:21.267000"
+  },
+  {
+    "id": 749203,
+    "title": "Silver medal with Jarpis",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 6,
+    "postDate": "2026-10-14T09:37:14.643000"
+  },
+  {
+    "id": 749453,
+    "title": "From 400 Score to Top 13: Kaggriculture Bronze Medal Solution",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -1,
+    "postDate": "2026-10-15T00:18:07.210000"
+  },
+  {
+    "id": 747538,
+    "title": "Silver Medal Solution - Hopefully!",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 16,
+    "postDate": "2026-10-08T23:38:16.805000"
+  },
+  {
+    "id": 748305,
+    "title": "100th~200th: Silver medal in 2 days",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 9,
+    "postDate": "2026-10-11T13:23:43.692000"
+  },
+  {
+    "id": 745788,
+    "title": "How did people come up with the early public strategies in the first place?",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 7,
+    "postDate": "2026-10-04T12:19:38.286000"
+  },
+  {
+    "id": 744789,
+    "title": "This was fun",
+    "authorName": "",
+    "commentCount": 15,
+    "votes": 12,
+    "postDate": "2026-10-01T00:19:02.619000"
+  },
+  {
+    "id": 746519,
+    "title": "Team Missing from Leaderboard and Both Submissions Stopped Matching Despite Successful Last Games",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 0,
+    "postDate": "2026-10-07T12:35:54.772000"
+  },
+  {
+    "id": 746400,
+    "title": "Submissions stopped working and disappeared from the leaderboard for over a day",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 2,
+    "postDate": "2026-10-07T03:34:43.100000"
+  },
+  {
+    "id": 745073,
+    "title": "[1st Place (currently)] A preview of our solution: BC, Self-Play PPO, and Heuristics \u2014 M & M & P & Q",
+    "authorName": "",
+    "commentCount": 17,
+    "votes": 107,
+    "postDate": "2026-10-02T03:38:23.271000"
+  },
+  {
+    "id": 745445,
+    "title": "Post-deadline runtime upgrade broke both of our validated submissions",
+    "authorName": "",
+    "commentCount": 16,
+    "votes": 11,
+    "postDate": "2026-10-03T05:29:29.592000"
+  },
+  {
+    "id": 745258,
+    "title": "[10th place (currently)] Highlights + Code and Diagrams + LeJEPA",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 34,
+    "postDate": "2026-10-02T20:23:42.440000"
+  },
+  {
+    "id": 745916,
+    "title": "Post-Deadline Runtime Change Caused Our Valid Submissions to Fail",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 7,
+    "postDate": "2026-10-05T08:19:11.205000"
+  },
+  {
+    "id": 745074,
+    "title": "Games are played too rarely",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 2,
+    "postDate": "2026-10-02T04:15:21.189000"
+  },
+  {
+    "id": 745797,
+    "title": "Game engine version update may be affecting submitted agents",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 6,
+    "postDate": "2026-10-04T13:24:50.469000"
+  },
+  {
+    "id": 745783,
+    "title": "[24th Place (currently)] Our writeup! Macro BC + Day Compiler",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 15,
+    "postDate": "2026-10-04T11:29:11.785000"
+  },
+  {
+    "id": 745760,
+    "title": "Currently ranked in the top 4% in this competition : Kaggriculture!",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-10-04T07:52:38.018000"
+  },
+  {
+    "id": 744939,
+    "title": "Question for the top teams: How do you approach simulation competitions?",
+    "authorName": "",
+    "commentCount": 10,
+    "votes": 11,
+    "postDate": "2026-10-01T14:20:44.060000"
+  },
+  {
+    "id": 745155,
+    "title": "Game Theoretic Approaches",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-10-02T14:36:57.474000"
+  },
+  {
+    "id": 744811,
+    "title": "Last accepted submission completed validation but is missing from the active pool",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 3,
+    "postDate": "2026-10-01T02:13:07.670000"
+  },
+  {
+    "id": 745119,
+    "title": "[4th Place]  No RL, no search: a one-forward-pass transformer that learned from what the models actually did",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 35,
+    "postDate": "2026-10-02T10:31:05.261000"
+  },
+  {
+    "id": 745087,
+    "title": "Economy was actually easy to solve, execution was much harder.",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-10-02T06:57:18.288000"
+  },
+  {
+    "id": 744999,
+    "title": "Our Kaggriculture Journey: RL Experiments, Final Agents & Lessons Learned",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-10-01T19:04:59.735000"
+  },
+  {
+    "id": 744988,
+    "title": "An ES-trained planner, a residual RL head, and ~190 experiments that did not ship",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-10-01T18:20:50.748000"
+  },
+  {
+    "id": 744791,
+    "title": "Why it feels like some accounts are just here to promote a LLM providers???",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-10-01T00:30:00.380000"
+  },
+  {
+    "id": 743716,
+    "title": "My RL Won, But Also Failed: Two Days of Training on a 196-Core Server",
+    "authorName": "",
+    "commentCount": 16,
+    "votes": 17,
+    "postDate": "2026-09-26T15:01:09.556000"
+  },
+  {
+    "id": 741743,
+    "title": "Finally reached the silver medal zone with RL\u2014My RL approach overview",
+    "authorName": "",
+    "commentCount": 30,
+    "votes": 53,
+    "postDate": "2026-09-17T04:44:42.099000"
+  },
+  {
+    "id": 744858,
+    "title": "My Solution",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-10-01T07:42:18.065000"
+  },
+  {
+    "id": 744823,
+    "title": "Suggestions for future simulation competitions: compute transparency and ladder slots",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 10,
+    "postDate": "2026-10-01T04:41:44.035000"
+  },
+  {
+    "id": 744814,
+    "title": "\ud83e\udeb0 FlyFarmer Solution",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 9,
+    "postDate": "2026-10-01T02:52:44.426000"
+  },
+  {
+    "id": 744820,
+    "title": "Dominated by public kernels",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-10-01T04:00:19.896000"
+  },
+  {
+    "id": 744819,
+    "title": "Kaggriculture research archive: source, experiments and reproducibility",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-10-01T03:36:50.463000"
+  },
+  {
+    "id": 744808,
+    "title": "Notes and reflections on agent capabilities",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-10-01T02:01:20.906000"
+  },
+  {
+    "id": 744790,
+    "title": "Ported  Kaggriculture from Python to HTML Javascript",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-10-01T00:28:02.639000"
+  },
+  {
+    "id": 744788,
+    "title": "Won a game right at the deadline but my rating didn't update (replay shows \"-NaN\")",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 0,
+    "postDate": "2026-10-01T00:19:02.549000"
+  },
+  {
+    "id": 744786,
+    "title": "GiGPO: A Thought Experiment at Kaggriculture",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-10-01T01:49:59.567000"
+  },
+  {
+    "id": 743384,
+    "title": "Question for M & M & P & Q and Boey",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": -26,
+    "postDate": "2026-09-25T20:30:26.523000"
+  },
+  {
+    "id": 744614,
+    "title": "Urgent: Is It Possible to Reactivate a Previous Submission Before the Deadline?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-30T14:40:28.031000"
+  },
+  {
+    "id": 744364,
+    "title": "Advice needed, Directory filled with previous agents and old strats / reports",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 0,
+    "postDate": "2026-09-29T15:26:26.120000"
+  },
+  {
+    "id": 744219,
+    "title": "Unusual long pending time",
+    "authorName": "",
+    "commentCount": 12,
+    "votes": 20,
+    "postDate": "2026-09-29T01:58:07.646000"
+  },
+  {
+    "id": 743829,
+    "title": "Eligibility of MIT-licensed public agent code under Rules 3.6(c) and 3.14(a)",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-09-27T09:28:39.248000"
+  },
+  {
+    "id": 744380,
+    "title": "Do you use RL to train the executors, or the agents as a whole?",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 1,
+    "postDate": "2026-09-29T16:32:42.438000"
+  },
+  {
+    "id": 744261,
+    "title": "Pending + in process",
+    "authorName": "",
+    "commentCount": 9,
+    "votes": 8,
+    "postDate": "2026-09-29T05:56:33.655000"
+  },
+  {
+    "id": 744287,
+    "title": " Submission sent! ",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-09-29T08:19:05.741000"
+  },
+  {
+    "id": 744255,
+    "title": "why is submission taking too long",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 8,
+    "postDate": "2026-09-29T05:41:42.222000"
+  },
+  {
+    "id": 744218,
+    "title": "Is Kaggle lagging? I\u2019ve had as many as 14 matches queued up at the same time.",
+    "authorName": "",
+    "commentCount": 11,
+    "votes": 16,
+    "postDate": "2026-09-29T01:52:38.845000"
+  },
+  {
+    "id": 743993,
+    "title": "Will the submissions be open sourced after the competition ends?",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 1,
+    "postDate": "2026-09-28T07:02:56.472000"
+  },
+  {
+    "id": 736219,
+    "title": "1st Place(previously)- Submission Strategy for beginners",
+    "authorName": "",
+    "commentCount": 11,
+    "votes": 95,
+    "postDate": "2026-08-19T22:38:49.801000"
+  },
+  {
+    "id": 743214,
+    "title": "Slow Rank Climb-up",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 4,
+    "postDate": "2026-09-25T08:45:15.284000"
+  },
+  {
+    "id": 743772,
+    "title": "game theory died years ago. just need more core and more core\u2026",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-09-27T00:00:04.940000"
+  },
+  {
+    "id": 743760,
+    "title": "RL discussion",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-09-26T20:41:09.569000"
+  },
+  {
+    "id": 743249,
+    "title": "10k teams!",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 9,
+    "postDate": "2026-09-25T11:09:43.610000"
+  },
+  {
+    "id": 742130,
+    "title": "I guess we will have 30 gold medals",
+    "authorName": "",
+    "commentCount": 10,
+    "votes": 28,
+    "postDate": "2026-09-20T03:46:47.326000"
+  },
+  {
+    "id": 743179,
+    "title": "Scoring Formula or conditions ",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 0,
+    "postDate": "2026-09-25T05:50:41.563000"
+  },
+  {
+    "id": 743231,
+    "title": "Six things I wish I'd known before trusting my local win rates",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-09-25T09:33:32.845000"
+  },
+  {
+    "id": 743009,
+    "title": "Why there are still public notebook being shared\uff1f",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 12,
+    "postDate": "2026-09-24T16:12:05.826000"
+  },
+  {
+    "id": 743105,
+    "title": "Qual estrat\u00e9gia a ser utilizada nessa reta final da competi\u00e7\u00e3o?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -6,
+    "postDate": "2026-09-24T22:44:19.695000"
+  },
+  {
+    "id": 741281,
+    "title": "Will code sharing also be closed in this competition, as it was in the PTCG Competition ?",
+    "authorName": "",
+    "commentCount": 9,
+    "votes": 7,
+    "postDate": "2026-09-14T12:26:51.724000"
+  },
+  {
+    "id": 742943,
+    "title": "[Tool] A byte-identical Rust simulator for Kaggriculture: ~550k steps/s, parallel tournaments, self-play data",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 9,
+    "postDate": "2026-09-24T09:44:01.313000"
+  },
+  {
+    "id": 739273,
+    "title": "I came here to build a farming agent. I ended up building a replay-measurement pipeline",
+    "authorName": "",
+    "commentCount": 21,
+    "votes": 42,
+    "postDate": "2026-09-03T13:00:21.561000"
+  },
+  {
+    "id": 742449,
+    "title": "Why aren't these agents planting in the southeast?",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 2,
+    "postDate": "2026-09-22T02:28:45.272000"
+  },
+  {
+    "id": 740282,
+    "title": "how much time does it take for submission to converge?",
+    "authorName": "",
+    "commentCount": 9,
+    "votes": 4,
+    "postDate": "2026-09-08T22:08:49.742000"
+  },
+  {
+    "id": 742737,
+    "title": "How long does RL training usually take for agents?",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 3,
+    "postDate": "2026-09-23T06:05:32.541000"
+  },
+  {
+    "id": 742025,
+    "title": "How do you decide which crops to plant?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-09-19T00:17:10.285000"
+  },
+  {
+    "id": 742886,
+    "title": "If you tried BC at the micro level, how did your agent perform?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-09-23T22:14:35.327000"
+  },
+  {
+    "id": 734000,
+    "title": "How path dependent is the current leaderboard rating?",
+    "authorName": "",
+    "commentCount": 18,
+    "votes": 33,
+    "postDate": "2026-08-09T13:18:32.031000"
+  },
+  {
+    "id": 742856,
+    "title": "What actually predicted the ladder, and 15 things that didn't",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-09-23T19:14:11.179000"
+  },
+  {
+    "id": 742329,
+    "title": "Tips for beginners getting started",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 3,
+    "postDate": "2026-09-21T14:10:41.152000"
+  },
+  {
+    "id": 742341,
+    "title": "BUG\uff1fI had more coins but was marked as the loser",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 2,
+    "postDate": "2026-09-21T15:27:05.106000"
+  },
+  {
+    "id": 742742,
+    "title": "Question about submission name",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-09-23T07:17:42.995000"
+  },
+  {
+    "id": 742571,
+    "title": "Tournament Question ",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-22T15:36:50.481000"
+  },
+  {
+    "id": 742246,
+    "title": "Neurosymbolic RL for Kaggriculture: what actually moved the needle [WIP]",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 6,
+    "postDate": "2026-09-20T23:51:43.318000"
+  },
+  {
+    "id": 742111,
+    "title": " \ud83e\udeb0 I let a fruit fly's brain play Kaggriculture",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 28,
+    "postDate": "2026-09-19T21:10:37.389000"
+  },
+  {
+    "id": 741730,
+    "title": "RL Progress update : self play",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 7,
+    "postDate": "2026-09-17T01:44:18.377000"
+  },
+  {
+    "id": 738619,
+    "title": "Learnings from PPO to 80k terminal cash",
+    "authorName": "",
+    "commentCount": 13,
+    "votes": 23,
+    "postDate": "2026-09-01T02:53:34.656000"
+  },
+  {
+    "id": 742005,
+    "title": "Use of Gurobi or other optimization algorithms in the submission",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 2,
+    "postDate": "2026-09-18T21:04:40.224000"
+  },
+  {
+    "id": 742035,
+    "title": "\u26a0\ufe0f Scam alert: fake \"Kaggle Staff\" account (bovarddd) asking Kaggriculture participants for their code",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 33,
+    "postDate": "2026-09-19T05:03:13.628000"
+  },
+  {
+    "id": 742120,
+    "title": "I think agents are becoming more and more like thieves. ",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-09-19T22:19:10.176000"
+  },
+  {
+    "id": 742083,
+    "title": "Disproportionate Rating Drop After a Close Defeat",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 1,
+    "postDate": "2026-09-19T17:31:11.777000"
+  },
+  {
+    "id": 742078,
+    "title": "Minimize time, and maximaze money",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-09-19T16:23:36.202000"
+  },
+  {
+    "id": 741722,
+    "title": "Evaluation of agent generalization and prevent overfitting?",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 2,
+    "postDate": "2026-09-16T23:43:23.811000"
+  },
+  {
+    "id": 737568,
+    "title": "Reached ~$15K average \u2014 what should I investigate next?",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 1,
+    "postDate": "2026-08-26T05:23:58.194000"
+  },
+  {
+    "id": 742009,
+    "title": "Best strategy for choosing crops?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-09-18T21:12:06.989000"
+  },
+  {
+    "id": 741988,
+    "title": "Pre-lock public notebook reminder (share lock 23 Sep 23:59 UTC)",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 2,
+    "postDate": "2026-09-18T19:20:25.286000"
+  },
+  {
+    "id": 741891,
+    "title": "Validated the market price formula against the spec's P(I0\u00b1T) numbers \u2014 sharing the implementation",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-18T04:47:02.317000"
+  },
+  {
+    "id": 741653,
+    "title": "this competition is more like AI  coding agents competing against each other",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 2,
+    "postDate": "2026-09-16T14:18:10.420000"
+  },
+  {
+    "id": 741907,
+    "title": "The farmer gets teleported back to the shed every day \u2014 and it explains most results",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": -3,
+    "postDate": "2026-09-18T10:57:45.500000"
+  },
+  {
+    "id": 741935,
+    "title": "Handling Pathfinding Overhead: A Look-Ahead Heuristic Approach",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-18T15:05:18.929000"
+  },
+  {
+    "id": 741320,
+    "title": "Hot take: RL is a variance tax\u2014Kaggriculture is a deterministic macro-schedule problem",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": -9,
+    "postDate": "2026-09-14T16:04:25.393000"
+  },
+  {
+    "id": 741792,
+    "title": "A question about players using the same pattern",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 1,
+    "postDate": "2026-09-17T13:19:38.103000"
+  },
+  {
+    "id": 741797,
+    "title": "Has anyone tried shared action heads or autoregressive decoding for BC to RL?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-09-17T14:21:40.951000"
+  },
+  {
+    "id": 741258,
+    "title": "RL finally starts learning something!",
+    "authorName": "",
+    "commentCount": 17,
+    "votes": 28,
+    "postDate": "2026-09-14T08:00:51.128000"
+  },
+  {
+    "id": 741003,
+    "title": "Has anyone had success with optimization-based planning?",
+    "authorName": "",
+    "commentCount": 9,
+    "votes": 2,
+    "postDate": "2026-09-12T17:33:09.006000"
+  },
+  {
+    "id": 740022,
+    "title": "My experimentation with RL",
+    "authorName": "",
+    "commentCount": 26,
+    "votes": 35,
+    "postDate": "2026-09-07T20:37:00.236000"
+  },
+  {
+    "id": 741414,
+    "title": "Final week tool: replay analyzer to squeeze points before the deadline",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 9,
+    "postDate": "2026-09-15T04:16:25.228000"
+  },
+  {
+    "id": 741596,
+    "title": "Fast Local H2H Arena & P&L Curve Analyzer (Squeeze Points Before the Deadline)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-09-16T03:02:44.947000"
+  },
+  {
+    "id": 740969,
+    "title": "I have only reached 20$k can we and if yes then how to use ml or other things to get started?",
+    "authorName": "",
+    "commentCount": 11,
+    "votes": 1,
+    "postDate": "2026-09-12T11:41:29.553000"
+  },
+  {
+    "id": 740588,
+    "title": "does copying opponent help?",
+    "authorName": "",
+    "commentCount": 15,
+    "votes": 4,
+    "postDate": "2026-09-10T08:09:17.257000"
+  },
+  {
+    "id": 741390,
+    "title": "submission trend -- is everyone catching up that fast really?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-14T22:29:17.062000"
+  },
+  {
+    "id": 741317,
+    "title": "Quick math check on $fib(n)$ labor scaling vs. land amortization in Kaggriculture",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -2,
+    "postDate": "2026-09-14T15:59:27.600000"
+  },
+  {
+    "id": 738799,
+    "title": "First simulation comp, what should I actually be learning?",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 8,
+    "postDate": "2026-09-01T19:09:14.256000"
+  },
+  {
+    "id": 740823,
+    "title": "How can I use the city\u2019s shops more effectively to increase my profits?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-11T14:35:28.968000"
+  },
+  {
+    "id": 740847,
+    "title": "My Journey So Far \u2014 Mechanics, Breakdowns, and What's Actually Working",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-09-11T16:49:48.136000"
+  },
+  {
+    "id": 740817,
+    "title": "Beyond Single-File Agents: How to Submit a Modular Multi-File Python Project",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -4,
+    "postDate": "2026-09-11T13:52:52.983000"
+  },
+  {
+    "id": 740792,
+    "title": "How are people making RL work in Kaggriculture?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 4,
+    "postDate": "2026-09-11T10:03:39.439000"
+  },
+  {
+    "id": 740650,
+    "title": "Selling fertilizer",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-09-10T16:33:18.007000"
+  },
+  {
+    "id": 739788,
+    "title": "Proposal: Show provisional Bradley-Terry rating.",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 3,
+    "postDate": "2026-09-06T08:37:57.868000"
+  },
+  {
+    "id": 740606,
+    "title": "Is the current ranking system reasonable?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 7,
+    "postDate": "2026-09-10T12:05:02.333000"
+  },
+  {
+    "id": 740550,
+    "title": "Reproducible Kaggriculture environment and observation audit",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-09-10T00:30:20.904000"
+  },
+  {
+    "id": 740510,
+    "title": "Automating strategy experiments in Kaggriculture",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-09-09T21:16:12.763000"
+  },
+  {
+    "id": 740437,
+    "title": "Your opponents are probably replaying the same tapes you are (I measured it)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-09-09T17:03:23.748000"
+  },
+  {
+    "id": 737937,
+    "title": "Determinism is an argument against RL here, not for it",
+    "authorName": "",
+    "commentCount": 10,
+    "votes": 9,
+    "postDate": "2026-08-28T07:50:23.237000"
+  },
+  {
+    "id": 740004,
+    "title": "could we please increase the k factor of the elo?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 7,
+    "postDate": "2026-09-07T18:52:19.445000"
+  },
+  {
+    "id": 740055,
+    "title": "A Three-Layer Brain for Kaggriculture",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-09-08T03:01:11.941000"
+  },
+  {
+    "id": 739084,
+    "title": "RNG seed recovery?",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 1,
+    "postDate": "2026-09-02T18:31:06.385000"
+  },
+  {
+    "id": 739972,
+    "title": "From replay orders to actual trades: a cash-flow breakdown",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-09-07T15:27:15.864000"
+  },
+  {
+    "id": 739874,
+    "title": "runTimeout is inherited at 1200s \u2014 is that intentional for 720 steps ? ",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-06T19:54:21.918000"
+  },
+  {
+    "id": 739534,
+    "title": "Here are a few observations I\u2019ve made about how the rating system behaves.",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 5,
+    "postDate": "2026-09-04T14:27:06.326000"
+  },
+  {
+    "id": 739746,
+    "title": "Why is there such a strict bonus point system?",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 1,
+    "postDate": "2026-09-06T00:10:56.914000"
+  },
+  {
+    "id": 739699,
+    "title": "Report a bug\uff1aWinners are deducted points, losers are added points",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 3,
+    "postDate": "2026-09-05T15:21:41.327000"
+  },
+  {
+    "id": 739410,
+    "title": "Final Bradley-Terry scoring: three clarifications (team score, ties, play rate)",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 4,
+    "postDate": "2026-09-04T01:02:15.199000"
+  },
+  {
+    "id": 739440,
+    "title": "[Baseline & Strategy] Reactive Agent Architecture & Crop ROI Breakdown",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -3,
+    "postDate": "2026-09-04T06:45:24.139000"
+  },
+  {
+    "id": 739388,
+    "title": "Reverse engineering the seed",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 3,
+    "postDate": "2026-09-03T21:21:38.934000"
+  },
+  {
+    "id": 739179,
+    "title": "Why are the strongest agents being retired from the leaderboard?",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 4,
+    "postDate": "2026-09-03T01:21:18.324000"
+  },
+  {
+    "id": 739283,
+    "title": "Quickstart isn't working",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-09-03T14:51:44.789000"
+  },
+  {
+    "id": 738343,
+    "title": "Proposal: Reset leaderboard",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 15,
+    "postDate": "2026-08-31T11:07:22.234000"
+  },
+  {
+    "id": 737699,
+    "title": "Experiences on LLM Usage",
+    "authorName": "",
+    "commentCount": 10,
+    "votes": 3,
+    "postDate": "2026-08-27T00:15:26.971000"
+  },
+  {
+    "id": 738727,
+    "title": "Proposal: No new shops at end of month",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-01T14:16:44.869000"
+  },
+  {
+    "id": 738837,
+    "title": "Is replaying action sequences extracted from public episode replays permitted under kaggle competiton Rules 3.14.a?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-09-01T21:43:22.956000"
+  },
+  {
+    "id": 738079,
+    "title": "If I\u2019m Going to Write Rules Anyway, Why Train a Model? \u2014 What I\u2019ve Learned and Still Don\u2019t Understand About Behavior Cloning",
+    "authorName": "",
+    "commentCount": 16,
+    "votes": 35,
+    "postDate": "2026-08-29T08:25:38.740000"
+  },
+  {
+    "id": 737570,
+    "title": "Can game parameters change mid-competition or on final evaluation?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-08-26T06:10:51.381000"
+  },
+  {
+    "id": 738325,
+    "title": "Beyond Replay Cloning: What is the True End-Game Strategy for Kaggriculture? (Stuck despite PPO, GA, & Beam Search)",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 1,
+    "postDate": "2026-08-31T09:30:32.909000"
+  },
+  {
+    "id": 738563,
+    "title": "X-ray your agent, or what one submission id gives away",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-08-31T21:16:35.746000"
+  },
+  {
+    "id": 738290,
+    "title": "Questions on rendering, yields, and input arguments",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-08-31T04:49:13.935000"
+  },
+  {
+    "id": 737545,
+    "title": "(Resolved) obs[\"step\"] is missing for seat 1 in env.step()/env.steps -- not a live env.run() match issue",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 12,
+    "postDate": "2026-08-26T03:41:10.133000"
+  },
+  {
+    "id": 736567,
+    "title": "End-to-End RL Is Harder Than It Looks: Many Replays from Leaderboard, but Not Much to Learn From",
+    "authorName": "",
+    "commentCount": 29,
+    "votes": 21,
+    "postDate": "2026-08-21T15:03:47.628000"
+  },
+  {
+    "id": 738075,
+    "title": "Melon isn't in any shop menu - town demand is exactly 1/day on every seed",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-08-29T06:49:19.733000"
+  },
+  {
+    "id": 737736,
+    "title": "Price curves differ wildly by product \u2014 data from 5 top-agent replays",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 3,
+    "postDate": "2026-08-27T07:20:44.081000"
+  },
+  {
+    "id": 737788,
+    "title": "Rules clarification: using a publicly published agent as a submission",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 3,
+    "postDate": "2026-08-27T11:09:00.560000"
+  },
+  {
+    "id": 737955,
+    "title": "Leaderboard is by nature obsolete at all times",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 14,
+    "postDate": "2026-08-28T10:55:55.945000"
+  },
+  {
+    "id": 738060,
+    "title": "Download Leader plays through MCP or programtically",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-28T23:40:41.885000"
+  },
+  {
+    "id": 737916,
+    "title": "confused about how to infer agent's score locally",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-28T05:58:10.535000"
+  },
+  {
+    "id": 734952,
+    "title": "Is Pure Self-Play PPO viable?",
+    "authorName": "",
+    "commentCount": 28,
+    "votes": 20,
+    "postDate": "2026-08-13T07:22:00.585000"
+  },
+  {
+    "id": 737879,
+    "title": "Kaggriculture - Hillclimbing",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 4,
+    "postDate": "2026-08-27T21:44:21.022000"
+  },
+  {
+    "id": 737801,
+    "title": "Is there a time limit on each agent's turn?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-27T13:30:56.202000"
+  },
+  {
+    "id": 737833,
+    "title": "BC + RL and Rule-based, what is an accessible guide for beginners?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-08-27T18:05:41.270000"
+  },
+  {
+    "id": 736314,
+    "title": "Evaluation time longer",
+    "authorName": "",
+    "commentCount": 9,
+    "votes": 2,
+    "postDate": "2026-08-20T09:35:31.420000"
+  },
+  {
+    "id": 737805,
+    "title": "Your \"GPU\" Kaggle kernel may be silently running on CPU (P100 vs PyTorch 2.10) \u2014 check + fix",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-08-27T13:54:39.923000"
+  },
+  {
+    "id": 737663,
+    "title": "Small environment change proposal: split weeds and shop randomness",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 5,
+    "postDate": "2026-08-26T16:47:20.940000"
+  },
+  {
+    "id": 737764,
+    "title": "Code & Dataset archives for Replay analysis, BC, RL and more",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 3,
+    "postDate": "2026-08-27T08:52:56.671000"
+  },
+  {
+    "id": 737731,
+    "title": "Crop economics per tile-day, and why an all-melon opening goes bankrupt",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-08-27T06:54:09.759000"
+  },
+  {
+    "id": 737431,
+    "title": "Regarding Deadline",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-25T13:32:31.826000"
+  },
+  {
+    "id": 737492,
+    "title": "How many days need to ensure your agents score?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-25T19:10:09.822000"
+  },
+  {
+    "id": 737571,
+    "title": "Which version got the final rating?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-26T06:49:00.314000"
+  },
+  {
+    "id": 737457,
+    "title": "Reward Calculation in Kaggriculture",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-25T16:03:12.015000"
+  },
+  {
+    "id": 737459,
+    "title": "Any Tips for Someone Starting the Competition Now?",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 3,
+    "postDate": "2026-08-25T16:48:26.827000"
+  },
+  {
+    "id": 737480,
+    "title": "How do you perform behavioral cloning?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 6,
+    "postDate": "2026-08-25T18:00:46.580000"
+  },
+  {
+    "id": 736439,
+    "title": "RL of Meta Agent: 960 Matchups and a PPO Plateau",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 15,
+    "postDate": "2026-08-20T19:30:21.219000"
+  },
+  {
+    "id": 736932,
+    "title": "Could the game\u2019s rating system be improved?",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 9,
+    "postDate": "2026-08-22T14:18:45.761000"
+  },
+  {
+    "id": 736568,
+    "title": "Does intentionally placing impossible tasks to make replays harder to copy count as unfair play?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-21T15:16:27.861000"
+  },
+  {
+    "id": 735311,
+    "title": "Small balance change",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 27,
+    "postDate": "2026-08-15T00:30:11.721000"
+  },
+  {
+    "id": 736917,
+    "title": "RL seems to have a very low ceiling and is extremely prone to noise interference.",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 4,
+    "postDate": "2026-08-22T12:01:00.536000"
+  },
+  {
+    "id": 736189,
+    "title": "Claude Code",
+    "authorName": "",
+    "commentCount": 13,
+    "votes": 2,
+    "postDate": "2026-08-19T19:44:58.426000"
+  },
+  {
+    "id": 736369,
+    "title": "Any High-Ranking Entries Using RL?",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 4,
+    "postDate": "2026-08-20T14:33:07.472000"
+  },
+  {
+    "id": 737013,
+    "title": "Discussion of the education value of my Kaggle experience. ",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-08-22T17:13:46.989000"
+  },
+  {
+    "id": 737035,
+    "title": "\ud83c\udf3e Complete EDA & Modular Agent Framework for Kaggriculture (with Market Price Elasticity Curves)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -8,
+    "postDate": "2026-08-22T21:07:50.599000"
+  },
+  {
+    "id": 737034,
+    "title": " \ud83c\udf3e [Dataset Release] 500+ Competitive Match Replays & Action Trajectories for Kaggriculture (EDA / BC / Price Elasticity)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -10,
+    "postDate": "2026-08-22T21:00:58.828000"
+  },
+  {
+    "id": 737027,
+    "title": "Inferring Opponent Inventory Quantity and Uncertainty from Public State \u2014 for Quantitative Trading Factor Modeling",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-08-22T19:12:47.659000"
+  },
+  {
+    "id": 736551,
+    "title": "\ud83d\udd0d Stop guessing why your agent lost \u2013 Kaggriculture Ops Lab reveals all",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": -17,
+    "postDate": "2026-08-21T13:29:18.334000"
+  },
+  {
+    "id": 736625,
+    "title": "The Daily Top Episodes dumps and my API-crawled corpus stopped overlapping on Aug 9 (measured)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 4,
+    "postDate": "2026-08-21T19:52:22.015000"
+  },
+  {
+    "id": 736407,
+    "title": "RL model release (working link)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 5,
+    "postDate": "2026-08-20T16:42:36.757000"
+  },
+  {
+    "id": 736299,
+    "title": "Request to invalidate all my submissions (username: heinado)",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-08-20T08:30:53.982000"
+  },
+  {
+    "id": 735683,
+    "title": "Am I getting this right?",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 1,
+    "postDate": "2026-08-17T15:00:15.810000"
+  },
+  {
+    "id": 736011,
+    "title": "Eligibility for Participant under 18",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 4,
+    "postDate": "2026-08-19T03:28:20.927000"
+  },
+  {
+    "id": 736187,
+    "title": "Midterm full evaluation",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-08-19T19:38:45.121000"
+  },
+  {
+    "id": 734384,
+    "title": "Am I just feeding RL ?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 4,
+    "postDate": "2026-08-11T09:22:51.304000"
+  },
+  {
+    "id": 736127,
+    "title": "Rate of convergence?",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 2,
+    "postDate": "2026-08-19T16:21:43.687000"
+  },
+  {
+    "id": 735575,
+    "title": "kaggle api does not return submission id?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-17T01:07:23.554000"
+  },
+  {
+    "id": 735366,
+    "title": "Farming strategies (I'm new)",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 4,
+    "postDate": "2026-08-15T10:05:25.580000"
+  },
+  {
+    "id": 734412,
+    "title": "The price table ranks the crops backwards \u2014 the town's appetite is what sets the price",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 6,
+    "postDate": "2026-08-11T12:36:26.427000"
+  },
+  {
+    "id": 734613,
+    "title": "My first competition",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 2,
+    "postDate": "2026-08-12T06:14:16.550000"
+  },
+  {
+    "id": 735469,
+    "title": "Claude API usage saving using Omnidimensional math formulas",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -1,
+    "postDate": "2026-08-16T05:48:57.712000"
+  },
+  {
+    "id": 735466,
+    "title": "Consistent 90k+ margin loss vs tier6-9 reference agents \u2014 is there headroom in a greedy scheduler, or is this an architecture ceiling?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-08-16T05:43:32.269000"
+  },
+  {
+    "id": 735332,
+    "title": "Kaggle Python environment issue with Numba?",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": -1,
+    "postDate": "2026-08-15T05:17:07.308000"
+  },
+  {
+    "id": 733392,
+    "title": "C++ rewrite",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 6,
+    "postDate": "2026-08-06T18:47:46.575000"
+  },
+  {
+    "id": 735209,
+    "title": "4-players? 8-players?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 3,
+    "postDate": "2026-08-14T13:20:06.809000"
+  },
+  {
+    "id": 732450,
+    "title": "Crucial Information for Starters and Organizers: Documentation vs. Engine Discrepancies",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 29,
+    "postDate": "2026-08-03T03:59:05.608000"
+  },
+  {
+    "id": 735174,
+    "title": "How we can evaluate our agent correctly?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-14T09:49:25.076000"
+  },
+  {
+    "id": 735119,
+    "title": "Kaggriculture Endgame Economics: Four Matched Tests That Changed My Agent",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": -7,
+    "postDate": "2026-08-14T03:14:07.311000"
+  },
+  {
+    "id": 733431,
+    "title": "Balance Changes",
+    "authorName": "",
+    "commentCount": 13,
+    "votes": 43,
+    "postDate": "2026-08-06T21:12:41.912000"
+  },
+  {
+    "id": 734637,
+    "title": "\ud83d\ude9c Kaggriculture | Look-Ahead Economic Optimization & Market Dynamics",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": -7,
+    "postDate": "2026-08-12T08:15:31.362000"
+  },
+  {
+    "id": 734743,
+    "title": "Are random seeds / future random events available to agents at game start?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-12T15:14:36.546000"
+  },
+  {
+    "id": 734562,
+    "title": "Competition",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 0,
+    "postDate": "2026-08-11T23:51:08.218000"
+  },
+  {
+    "id": 734684,
+    "title": "Match outcome contradicts stated win condition (higher coin total recorded as loss)",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 2,
+    "postDate": "2026-08-12T12:00:58.913000"
+  },
+  {
+    "id": 734212,
+    "title": "How I Keep Iterating Kaggriculture Agents",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 21,
+    "postDate": "2026-08-10T14:33:44.137000"
+  },
+  {
+    "id": 734308,
+    "title": "Why aren't top solutions using 4th quadrant?",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 4,
+    "postDate": "2026-08-10T20:57:24.602000"
+  },
+  {
+    "id": 732902,
+    "title": "Will the competition be easily solved? [Closed]",
+    "authorName": "",
+    "commentCount": 21,
+    "votes": 20,
+    "postDate": "2026-08-05T01:55:39.479000"
+  },
+  {
+    "id": 734235,
+    "title": "New to the episode data? A gentle EDA to get you started",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 3,
+    "postDate": "2026-08-10T16:29:48.377000"
+  },
+  {
+    "id": 733902,
+    "title": "Bug in browser demo (\"Play in browser\")",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 2,
+    "postDate": "2026-08-09T00:07:55.389000"
+  },
+  {
+    "id": 733436,
+    "title": "where's the game engine ?? ",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 4,
+    "postDate": "2026-08-06T21:25:27.870000"
+  },
+  {
+    "id": 734135,
+    "title": "Supported way to read episode metadata / rating history?",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 0,
+    "postDate": "2026-08-10T04:45:15.979000"
+  },
+  {
+    "id": 734042,
+    "title": "I've created data structures to simulate the market",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-08-09T16:32:10.913000"
+  },
+  {
+    "id": 734033,
+    "title": "Actions are the real constraint, not land or money \u2014 profit per action for every crop and animal",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-09T15:57:21.858000"
+  },
+  {
+    "id": 734003,
+    "title": "Meaning of \"amp\"",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-08-09T13:38:58.044000"
+  },
+  {
+    "id": 733924,
+    "title": "Analyzed the top-5's openings \u2014 3 distinct clusters, 2 private strategies beating the public meta. Notebook + dataset linked",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-09T04:34:49.564000"
+  },
+  {
+    "id": 732114,
+    "title": "[Problem] Too many requests to ListEpisodes",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 3,
+    "postDate": "2026-08-02T00:05:20.831000"
+  },
+  {
+    "id": 733868,
+    "title": "Rule clarification: does code shared in a public Dataset fall inside rule 6.b?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-08T17:41:09.646000"
+  },
+  {
+    "id": 733658,
+    "title": "Why using same strategy why and how?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-07T19:07:27.278000"
+  },
+  {
+    "id": 733774,
+    "title": "Official Environment file",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-08T06:51:14.541000"
+  },
+  {
+    "id": 733738,
+    "title": "seeking strategy review feedback",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-08T03:27:09.951000"
+  },
+  {
+    "id": 733496,
+    "title": "Can't Place a Cow on Pasture",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 1,
+    "postDate": "2026-08-07T05:42:14.556000"
+  },
+  {
+    "id": 732613,
+    "title": "Are Agents Really Competing Against Each Other?",
+    "authorName": "",
+    "commentCount": 10,
+    "votes": 15,
+    "postDate": "2026-08-03T21:11:20.508000"
+  },
+  {
+    "id": 732663,
+    "title": "Issue with placing animals while playing in browser ?",
+    "authorName": "",
+    "commentCount": 5,
+    "votes": 0,
+    "postDate": "2026-08-04T06:26:09.103000"
+  },
+  {
+    "id": 733535,
+    "title": "How does the game identify the main function?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-07T09:28:10.090000"
+  },
+  {
+    "id": 733383,
+    "title": "Thoughts on RL vs. Deterministic Baselines",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 14,
+    "postDate": "2026-08-06T17:46:51.348000"
+  },
+  {
+    "id": 733473,
+    "title": "Persona identity verification failed with no reason given. no retry option, can't submit",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-08-07T01:34:02.287000"
+  },
+  {
+    "id": 732682,
+    "title": "Thank You Kaggle",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-04T08:10:07.569000"
+  },
+  {
+    "id": 733002,
+    "title": "Can a truly closed-loop strategy really outperform an open-loop strategy?",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 1,
+    "postDate": "2026-08-05T14:30:29.704000"
+  },
+  {
+    "id": 733333,
+    "title": "Agriculture is tough for real ! ",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-06T15:11:23.081000"
+  },
+  {
+    "id": 733272,
+    "title": "Does a notebook submitted in \"code\" automatically count as a competition submission?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-06T10:14:27.410000"
+  },
+  {
+    "id": 733055,
+    "title": "Proposal for Requested Changes to Engine to Kill Fixed Strategy Meta and Encourage Dynamic Agent Development",
+    "authorName": "",
+    "commentCount": 7,
+    "votes": 3,
+    "postDate": "2026-08-05T17:37:09.349000"
+  },
+  {
+    "id": 732931,
+    "title": "Which episodes count toward the final Bradley-Terry ranking?",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 1,
+    "postDate": "2026-08-05T06:39:45.432000"
+  },
+  {
+    "id": 733173,
+    "title": "Is there an opponent-agnostic global optimum in Kaggriculture?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 2,
+    "postDate": "2026-08-06T02:49:59.320000"
+  },
+  {
+    "id": 733161,
+    "title": "Observation timing",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-06T02:04:15.185000"
+  },
+  {
+    "id": 733155,
+    "title": "Terminal settlement",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-06T01:52:18.570000"
+  },
+  {
+    "id": 733047,
+    "title": "Is there hope?",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 2,
+    "postDate": "2026-08-05T17:06:10.420000"
+  },
+  {
+    "id": 733041,
+    "title": "How much time does the agent have to compute an action?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 1,
+    "postDate": "2026-08-05T16:45:04.286000"
+  },
+  {
+    "id": 732996,
+    "title": "Are MARKET_PARAMS static?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-05T13:59:45.412000"
+  },
+  {
+    "id": 732909,
+    "title": "Under 18 Registration",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 3,
+    "postDate": "2026-08-05T03:10:20.672000"
+  },
+  {
+    "id": 732762,
+    "title": "Can we use LLMs?",
+    "authorName": "",
+    "commentCount": 8,
+    "votes": 1,
+    "postDate": "2026-08-04T14:35:02.439000"
+  },
+  {
+    "id": 732957,
+    "title": "What kind of machine learning model does this competition require exactly?",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 2,
+    "postDate": "2026-08-05T09:39:53.712000"
+  },
+  {
+    "id": 732708,
+    "title": "How exactly is skill score calculated? (Slow skill rating increase, stop improving while still winning)",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": 1,
+    "postDate": "2026-08-04T10:38:21.467000"
+  },
+  {
+    "id": 732878,
+    "title": "NameError: name 'agent' is not defined",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 0,
+    "postDate": "2026-08-04T22:48:48.991000"
+  },
+  {
+    "id": 732886,
+    "title": "Farm hands won't move",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-04T23:20:58.250000"
+  },
+  {
+    "id": 732856,
+    "title": "Multi-Sensory Colour Coded Ai to Ai Communication Tool.",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -3,
+    "postDate": "2026-08-04T19:55:55.857000"
+  },
+  {
+    "id": 732855,
+    "title": "Gussstron tech",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -4,
+    "postDate": "2026-08-04T19:52:04.141000"
+  },
+  {
+    "id": 731953,
+    "title": "A few rule questions for the organizers",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 9,
+    "postDate": "2026-08-01T15:46:14.596000"
+  },
+  {
+    "id": 732820,
+    "title": "Bug? CARE rate",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-04T17:34:04.035000"
+  },
+  {
+    "id": 732728,
+    "title": "Full action spec (HIRE / land / animals) + CROPS & ANIMALS dict contents?",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 0,
+    "postDate": "2026-08-04T12:10:18.877000"
+  },
+  {
+    "id": 732779,
+    "title": "Alternative replay viewer",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-04T15:12:47.021000"
+  },
+  {
+    "id": 732129,
+    "title": "    Did anyone else think of board games?",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 4,
+    "postDate": "2026-08-02T03:00:02.533000"
+  },
+  {
+    "id": 732676,
+    "title": "Number players of Kaggriculture",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-04T07:11:28.171000"
+  },
+  {
+    "id": 732646,
+    "title": "(Resolved) How to show episodes?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 1,
+    "postDate": "2026-08-04T02:35:34.504000"
+  },
+  {
+    "id": 732655,
+    "title": "An In-Depth Analysis of the Kaggriculture Engine",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-04T04:03:56.673000"
+  },
+  {
+    "id": 732644,
+    "title": "New to simulation competitions \u2014 where should I start?",
+    "authorName": "",
+    "commentCount": 1,
+    "votes": 0,
+    "postDate": "2026-08-04T02:09:32.647000"
+  },
+  {
+    "id": 731635,
+    "title": "Bug: Hired hands can spawn on locked land and get stuck",
+    "authorName": "",
+    "commentCount": 3,
+    "votes": 8,
+    "postDate": "2026-07-31T18:56:29.590000"
+  },
+  {
+    "id": 732623,
+    "title": "Crop price crash analysis \u2014 why MELON dominates (with math)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 1,
+    "postDate": "2026-08-03T22:05:37.507000"
+  },
+  {
+    "id": 732598,
+    "title": "Pathway to completion ",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -1,
+    "postDate": "2026-08-03T19:49:34.088000"
+  },
+  {
+    "id": 732561,
+    "title": "collusion? ",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-03T17:21:55.745000"
+  },
+  {
+    "id": 731810,
+    "title": "Query on Submission Resources",
+    "authorName": "",
+    "commentCount": 2,
+    "votes": 3,
+    "postDate": "2026-08-01T06:16:19.201000"
+  },
+  {
+    "id": 732354,
+    "title": "Hard to rl",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": -2,
+    "postDate": "2026-08-02T12:40:36.062000"
+  },
+  {
+    "id": 732121,
+    "title": "Why Opponents Matter: Shared-Market Dynamics (English Diagram)",
+    "authorName": "",
+    "commentCount": 0,
+    "votes": 0,
+    "postDate": "2026-08-02T01:04:13.061000"
+  },
+  {
+    "id": 731152,
+    "title": "Seat swap did not move my bot's bank (6 seeds, both seats)",
+    "authorName": "",
+    "commentCount": 4,
+    "votes": -7,
+    "postDate": "2026-07-30T20:45:29.549000"
+  }
+]

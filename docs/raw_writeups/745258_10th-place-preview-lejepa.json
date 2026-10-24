@@ -1,0 +1,62 @@
+{
+  "topic_id": 745258,
+  "metadata": {
+    "id": 745258,
+    "title": "[10th place (currently)] Highlights + Code and Diagrams + LeJEPA",
+    "authorName": "",
+    "commentCount": 6,
+    "votes": 34,
+    "postDate": "2026-10-02T20:23:42.440000"
+  },
+  "messages": [
+    {
+      "id": 3531921,
+      "authorName": "",
+      "postDate": "2026-10-02T20:23:42.440000",
+      "votes": 34,
+      "content": "<p>I was pretty excited to apply what I learned from the Orbit Wars competition here. I tried out a lot of ideas, and some of them worked quite well. <a href=\"https://github.com/CarsonBurke/kaggriculture\" target=\"_blank\">Code and Diagrams</a></p>\n<p>I trained an ~947k parameter actor for about 10 hours on an RTX 5090. Behavioural Cloning on leaderboard data from Sept. 27/28 and then a PPO self play league.</p>\n<p>Highlights:</p>\n<ul>\n<li>About 2 hours before submission I recognized it was buying 3/4 land plots every game, so I gave it an entropy bonus. It seemed to improve its movement and trading \u0394, but did not fix its collapsed strategy in time.</li>\n<li>I should have pretrained my critic on either the leaderboard data I cloned or my BC'd actor, and then it probably wouldn't have suffered from said strategy collapse.</li>\n<li>An ~800k parameter <a href=\"https://arxiv.org/html/2511.08544v3\" target=\"_blank\">lejepa</a> backbone improved learning speed a lot, and made it easier to share parameters between the actor and critic without worrying about gradient conflict.</li>\n<li>A good league is incredibly important. You want only the toughest opponents, but that is a dynamic class, so I did screening of old versions with high posterior \u03c3.</li>\n<li>Win/Draw/Loss CE critic seems to perform better than any soft reward based on bank-margin, or dense rewards on asset liquidity (which I figured might work as a proxy for final bank).</li>\n</ul>"
+    },
+    {
+      "id": 3532690,
+      "authorName": "",
+      "postDate": "2026-10-04T12:22:17.660000",
+      "votes": 0,
+      "content": "<p>Congrats on the gold medal!</p>\n<p>I am a little bit curious on how did you approach action space definition? Was moving (SOUTH, WEST, etc.) part of the learning to be done? Or more like task target (WATER (2,1))?</p>"
+    },
+    {
+      "id": 3532824,
+      "authorName": "",
+      "postDate": "2026-10-04T20:31:51.083000",
+      "votes": 0,
+      "content": "<p>Thank you.</p>\n<p>Yes I had the \"move cardinal directions\" categorical at the start. I found better results using a categorical over all 99 tiles the unit could move to (masked for unpurchased and whatever) as the destination to inform which direction to move.</p>\n<p>I'm not sure if an actual pointer would have been better. I tested it but never got around to evaluating it (some things just slip past when you do so many ablations, I guess \ud83d\ude05).</p>"
+    },
+    {
+      "id": 3533140,
+      "authorName": "",
+      "postDate": "2026-10-05T15:19:42.217000",
+      "votes": 0,
+      "content": "<p>So wait. MOVE was categorical over all tiles, but attached to a task? Like (MOVE -&gt;8,3 &amp; WATER, occupied till its done) or a task is a different action to choose? Like MOVE -&gt; 8,3 OR WATER as 2 different decisions?</p>"
+    },
+    {
+      "id": 3533173,
+      "authorName": "",
+      "postDate": "2026-10-05T16:58:21.707000",
+      "votes": 0,
+      "content": "<p>No. Please read the code for the nuances </p>"
+    },
+    {
+      "id": 3533395,
+      "authorName": "",
+      "postDate": "2026-10-06T01:28:57.250000",
+      "votes": 0,
+      "content": "<p>Thank you very much! Will read it carefully.</p>"
+    },
+    {
+      "id": 3532015,
+      "authorName": "",
+      "postDate": "2026-10-03T02:49:25.327000",
+      "votes": 0,
+      "content": "<p>It's impressive that you can achive this rank by using such low computing resource. And thanks for sharing your experience with LeJEPA, this paper is exactly what I've been looking for\u2014I can't believe I missed it before!</p>"
+    }
+  ]
+}
