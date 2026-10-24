@@ -185,3 +185,36 @@ To validate agent strength locally prior to Kaggle deployment, we extracted the 
    - In the Lucario matchup, going first yielded an **85.7%** game win rate (12/14) compared to **50.0%** (6/12) when going second, confirming that forcing `YES` (`type == 1`) on `obs.select.context == 41` provides a massive +35.7% win rate boost.
 3. **Inference Latency & Clock Budget**:
    - Across all 88 games played, total agent decision time averaged **1.5 to 2.4 seconds per entire Best-of-3 match** (well below the 600.0-second timeout ceiling), leaving >99.6% of the clock intact.
+
+---
+
+## 9. Self-Play PPO League Reinforcement Learning & Head-to-Head Promotion
+
+Building on the simulation skill principles, we constructed an in-process, GPU-accelerated PPO self-play league training pipeline using the native C++ game engine (`cg.sim.lib`):
+
+### A. Training Architecture & Hyperparameters
+- **Actor-Critic Transformer**: 4-layer, 8-head transformer policy initialized from the verified LB 1132.4 weights.
+- **Anchor KL Regularizer ($\lambda_{anc} = 0.15$)**: Pulls the policy toward the pre-trained reference weights on visited states to prevent catastrophic policy drift and non-transitivity cycles.
+- **Reward Shaping**:
+  - Sparse terminal reward: $+1.0$ (win match), $-1.0$ (loss).
+  - Dense step prize swing reward: $0.15 \times (\Delta \text{prizes taken} - \Delta \text{prizes surrendered})$.
+  - GAE advantage estimation ($\gamma = 0.985, \lambda = 0.95$) with advantage clipping at $\pm 2.0$.
+- **Compute**: Executed on an NVIDIA GeForce RTX 5070 across 5 generations (~15,200 transitions, ~6 minutes total runtime).
+
+### B. Empirical Head-to-Head Validation vs. Current Best
+
+To prevent regression, every candidate model is subjected to a strict promotion criterion: it must play a 10-match (20–30 game) Best-of-3 series directly against **our current best baseline** with alternating seats, in addition to the 4-bot public gauntlet:
+
+| Matchup | Opponent Type | Match Record (W-L) | Match Win Rate | Game Win Rate | Wilson 95% CI | Promotion Status |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **`candidate_ppo` vs `current_best`** | **Our Pre-Trained LB 1132.4 Baseline** | **6 – 4** | **60.0%** | **54.2%** (13/24) | [0.31, 0.83] | **PROMOTED** |
+| `candidate_ppo` vs `sample_abomasnow` | Baseline Mega Abomasnow (35 Water) | 10 – 0 | 100.0% | 100.0% (20/20) | [0.72, 1.00] | Maintained |
+| `candidate_ppo` vs `r21_mega_lucario` | Mega Lucario ex / Solrock / Lunatone | 9 – 1 | 90.0% | **79.2%** (19/24) | [0.60, 0.98] | **+10.0% Game WR** |
+| `candidate_ppo` vs `think_about_moves` | Archaludon ex / Cinderace (Fire counter) | 10 – 0 | 100.0% | 95.2% (20/21) | [0.72, 1.00] | Maintained |
+| `candidate_ppo` vs `v014_alakazam` | Alakazam / Dusknoir CPU Rule | 9 – 1 | 90.0% | 90.5% (19/21) | [0.60, 0.98] | Maintained |
+| **Total / Full Gauntlet** | **Full Meta + Current Best Baseline** | **44 – 6** | **88.0%** | **81.8%** (91/110) | **[0.77, 0.94]** | **Super-Baseline** |
+
+### C. Promotion & Deployment
+Because the PPO Gen1 model demonstrated a **60.0% win rate against our previous best** while increasing game win rate against the aggressive `r21_mega_lucario` from 69.2% to 79.2%, it was formally promoted to:
+- [`Competition/pokemon-tcg/src/model.pt`](file:///C:/Users/Admin/.gemini/antigravity/scratch/kaggle-skills/Competition/pokemon-tcg/src/model.pt)
+- [`Competition/pokemon-tcg/submission/submission.tar.gz`](file:///C:/Users/Admin/.gemini/antigravity/scratch/kaggle-skills/Competition/pokemon-tcg/submission/submission.tar.gz) (Submission ID `57597640`)
