@@ -4,16 +4,18 @@
 **1st Place Solution**: *1st Place — GPT5.4, Gemini3.1, ClaudeOpus4.6 and KGMON Playbook for Tabular Data* by Chris Deotte (`@cdeotte`, Senior Data Scientist at NVIDIA)  
 **Track**: Tabular Binary Classification  
 **Evaluation Metric**: Area Under the ROC Curve ($\text{ROC-AUC}$)  
-**Official Code Artifacts**: [Kaggle 1st Place Solution Notebook](https://www.kaggle.com/code/cdeotte/1st-place-nvidia-cuml-logistic-regression) & [Kaggle OOF Dataset](https://www.kaggle.com/datasets/cdeotte/s6e3-oof-and-test-pred-v2)
+**Official Code Artifacts**: [GitHub 100-Model Open-Source Repo (`s6e3_customer_churn`)](https://github.com/cdeotte/kaggle-playground-solutions/tree/main/s6e3_customer_churn), [Kaggle 1st Place Solution Writeup](https://www.kaggle.com/competitions/playground-series-s6e3/writeups/1st-place-gpt5-4-gemini3-1-claudeopus4-6-kgm), [Kaggle 1st Place Solution Notebook](https://www.kaggle.com/code/cdeotte/1st-place-nvidia-cuml-logistic-regression) & [Kaggle OOF Dataset](https://www.kaggle.com/datasets/cdeotte/s6e3-oof-and-test-pred-v2)
 
 ### Official Winning Scoreboard
-| Submission Type | Cross-Validation (CV / OOF) | Full-Fit Train AUC | Notes / Outcome |
-| :--- | :--- | :--- | :--- |
-| **Final Selected 4-Level Stack** | **0.919857** | **0.920002** | 🥇 **1st Place Gold Medal (154 Models combined via cuML Logistic Regression)** |
-| Top Single Model (RealMLP `v10700`) | ~0.9189 | — | Highest positive weight in final meta-learner ($+0.2085$) |
-| Foundation Model (TabICL `v9500`) | ~0.9185 | — | Zero-shot in-context learning ($+0.1923$ meta weight) |
-| Top GBDT Level 3 Stacker (`cat_v10324_stk`) | ~0.9192 | — | CatBoost stacking Level 2 OOFs ($+0.1551$ meta weight) |
-| Best Single Baseline XGBoost | ~0.9182 | — | Standard starting public baseline |
+| Submission Type | Cross-Validation (CV / OOF) | Public LB | Private LB | Full-Fit Train AUC | Notes / Outcome |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **Final Selected 4-Level Stack (154 Models)** | **0.919857** | 0.91773 | **0.91856** | **0.920002** | 🥇 **1st Place Gold Medal (137 L1 + 17 L2/L3 models via cuML Logistic Regression)** |
+| **Open-Source 100-Model Repo Subset (`s6e3_customer_churn`)** | **0.91983** | 0.91765 | **0.91853** | — | Standalone 100 Level-1 models + `stack.py` (also scores **1st Place** alone) |
+| Top Single Model (LightGBM `lgbm_union_dist_ngram_te_slow` / XGB `xgb_ngram_te_binned_keys_drift`) | **0.919164** / **0.919175** | — | — | — | Top single GBDTs in open-source release (30k rounds slow LGBM / n-gram TE XGB) |
+| Top Public RealMLP (`yekenot_realmlp_pytabkit_silu`) | **0.919118** | — | — | — | Strongest single neural net; internal `realmlp_v10700` got highest stack coef ($+0.2085$) |
+| Foundation Model (`TabICL`) | ~0.9185 (`0.915195` public port) | — | — | — | Zero-shot in-context learning ($+0.1923$ meta weight in final stack) |
+| Top GBDT Level 3 Stacker (`cat_v10324_stk`) | ~0.9192 | — | — | — | CatBoost stacking Level 2 OOFs ($+0.1551$ meta weight) |
+| Best Single Baseline XGBoost (`XGBRanker` / Raw) | ~0.9149–0.9182 | — | — | — | Starting baseline |
 
 ---
 
@@ -221,6 +223,25 @@ From 850 trained candidates, greedy hill-climbing selected **154 models** spanni
    - Trained on the 7,032 original IBM rows with Gaussian corruptions. Latent embeddings and reconstruction error vectors were fed into GBDTs.
 6. **Liquid Neural Networks (LNN — 3 models)**:
    - Continuous-time ODE-inspired neuron dynamics with learnable time constants $\tau$, providing orthogonal representation structure.
+
+### 4.3 Open-Source 100-Model Repository Breakdown (`cdeotte/kaggle-playground-solutions`)
+Chris Deotte released 100 of the 137 Level-1 models in [`s6e3_customer_churn`](https://github.com/cdeotte/kaggle-playground-solutions/tree/main/s6e3_customer_churn) (covering every architecture family and the strongest variant of each class). Stacked alone with fold-calibrated logits (`cuML LogisticRegression(C=0.01)`), these 100 models achieve **0.91983 CV / 0.91765 Public LB / 0.91853 Private LB** (still 1st Place):
+
+- **XGBoost (20 released models, peak `0.919175` OOF)**:
+  - `xgb_ngram_te_binned_keys_drift` (**`0.919175`**): Nested n-gram target encoding + binned/rounded/digit-pair keys, counts, drift, and original IBM churn rates.
+  - `xgb_bigram_trigram_te_stats` (`0.919015`) and `xgb_union_ab_lgbm_port_prebinned` (`0.918804`, pre-binned to 256 quantile bins with `max_bin=16000`).
+  - Specialized variants: `xgb_native_cat_tabpfn_original` (`0.916507`, TabPFN fitted on original 7k IBM rows as a prior feature), `xgb_original_self_supervised` (`0.915474`, auxiliary models predicting each column from all others on original rows), and `xgb_pairwise_ranker_platt` (`0.914916`, `XGBRanker(objective='rank:pairwise')` + Platt scaling).
+- **LightGBM (13 released models, peak `0.919164` OOF)**:
+  - `lgbm_union_dist_ngram_te_slow` (**`0.919164`**): 466-column feature union (transforms, flags, crosses, original priors, distribution/digit/n-gram blocks) trained for **30,000 rounds at `lr=0.0025`**.
+  - `lgbm_union_dist_ngram_te` (`0.919138`), `lgbm_union_dist_ngram_te_goss` (`0.918806`, GOSS 63 leaves), `lgbm_union_dist_ngram_te_dart` (`0.918742`, DART 31 leaves, depth 4), `lgbm_extra_trees_pairs_digits_two_stage_te` (`0.918361`), and `lgbm_decimal_ngram_svd_prototypes` (`0.914912`, TF-IDF/SVD over charge text n-grams + k-means prototypes).
+- **CatBoost (14 released models, peak `0.919017` OOF)**:
+  - `catboost_numcat_digits_orig_rows` (**`0.919017`**) vs `catboost_numcat_digits_orig_priors_drift` (`0.918957`) — symmetric tree architectures (`max_ctr_complexity=4`, 65 native categoricals, PMI + KD-tree density in `catboost_fold_density_knn_orig_priors` at `0.918762`, exact numeric triple cross in `catboost_triple_cross_ranked_orig_rows` at `0.918874`).
+- **RealMLP & TabM (7 internal + 5 public ports, peak `0.919118` OOF)**:
+  - `yekenot_realmlp_pytabkit_silu` (**`0.919118`**), `yunsuxiaozi_realmlp_pytorch` (`0.918943`), `blamerx_tabm` (`0.918788`), `realmlp_pair_te_logit3_kbins_priors` (`0.918292`, KBins + value codes + 105 pair TEs expanded as cubic logit powers $[z, z^2, z^3]$).
+- **31 Neural Network Variants (`models/neural_nets`, up to `0.917661` OOF)**:
+  - Spans `dae_knn_discriminator_token_te_xgb` (`0.917661`), `emb_mlp_engineered_original_priors_drift` (`0.917578`), `tabtransformer_pair_te_logit3_digits_original_rows` (`0.917488`, 561 pair TE logit powers), `graphsage_sampled_snapped_rare_flags_ohe_knn_graph` (`0.915789`), `deepfm_snapped_quantile_prior_tokens` (`0.915703`), `nam_original_density_bins` (`0.914941`), `tokenized_cnn_original_gmm_archetypes` (`0.913764`), `prototype_net_original_mahalanobis` (`0.913463`), `ifan_original_noise_kmeans_kpca` (`0.913336`), `snn_charge_char_ngrams_benford_orig_knn` (`0.912932`), and `gandalf_raw_columns` (`0.911962`).
+- **Classic, KNN & Bayesian Survival Models (`models/classic` & `public_models`)**:
+  - `logreg_ohe_crosses_hinges_group_dense` (`0.916847`, cuML LR on 4,362 one-hot bins/digits/crosses + 148 dense cols), `johnnyhyland_survival_xgb` (`0.916741`, PyMC Bayesian survival-curve features into XGBoost), `siukeitin_ydf` (`0.917976`), and `lr_pair_te_logit3` (`0.916014`, cubic logit powers of 171 pair TEs).
 
 ---
 

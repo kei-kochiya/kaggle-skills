@@ -109,12 +109,16 @@ Never rely on a single model family. Train diverse model classes on the exact sa
 2. **Deep Tabular Neural Networks**:
    - **RealMLP (`pytabkit`)**: State-of-the-art tabular MLP utilizing Piecewise Linear Representations (PLR), cosine log learning rate scheduling, and SiLU/Mish activations.
    - **TabM**: Bilinear multi-component interaction architecture ($k=32$ basis components).
-   - **TabICL**: Zero-shot in-context tabular foundation Transformer requiring no gradient updates.
-   - **GraphSAGE GNN**: KNN graph embeddings built on GPU via cuML KNN.
-   - **FT-Transformer / TabTransformer / Trompt / SNN (SELU)**: Attention and self-normalizing representations.
-3. **Group-Wise Subgroup Partitioning**:
+   - **GraphSAGE GNN / TALENT Zoo**: KNN graph embeddings built on GPU via cuML KNN, plus `ExcelFormer`, `AMFormer`, `TabR`, `Trompt`, `ModernNCA`, `FT-Transformer`, `GANDALF`, `DeepFM`, `SNN (SELU)`.
+3. **Tabular LLMs, Generative Transformers & Foundation Models**:
+   - **Target-First ("Storyteller") & Target-Last ("Detective") GPT-2 Classifiers**: Fine-tune a 60-epoch GReaT replica (`original_df` only) on `"col is val"` rows, scoring via 30-order `logsumexp` Bayes LLR (`Storyteller`) or single-pass label readout (`Detective`).
+   - **Any-Order / Bagged Generative Transformers (`AO-ARM`, `GenPure`)**: Train from-scratch column/value transformers across random column orders (without early stopping, e.g., 36 epochs) and seed-bag Bayes log-odds.
+   - **Self-Supervised Feature-Token Transformers (`Q-FT v2`, RTD Encoders)**: Pretrain order-free `ModernBERT` / QK-norm transformers with Masked-Token Reconstruction and Hard-Negative Replaced-Token Detection (RTD) on `train + test` before 5-fold fine-tuning.
+   - **Replica-World Source Pretraining**: Pretrain field transformers / BatchEnsemble MLPs on 1M+ synthetic rows sampled from noised original-data GReaT replicas before fold fine-tuning.
+   - **Zero-Shot Full-Context TFM Zoo**: `TabPFN-3.5` (declare high-cardinality physical IDs as categorical), `Kumo-Tabular`, `TabFM`, `EXAONE`, `LimiX-2`, `Causilo`, `TabICLv2`, `Mitra-v2`. See [`references/tabular_llms_generative_transformers.md`](./references/tabular_llms_generative_transformers.md).
+4. **Group-Wise Subgroup Partitioning**:
    - Train dedicated models on isolated categorical slices (e.g. `City Type` $\times$ `Car Type`, `Age Group`). While individually weaker, their error residuals are completely decorrelated from global models, providing consistent lift inside the meta-stack. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
-4. **Continuous Soft Pseudo-Label Distillation**:
+5. **Continuous Soft Pseudo-Label Distillation**:
    - Never use hard binary pseudo-labels ($0/1$). Train student models on continuous teacher probabilities ($p \in (0, 1)$) with sample weight $w=2$ using teachers whose training strictly excluded the validation fold. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
 
 Save both **Out-Of-Fold (OOF)** predictions on the training set and **Test** predictions for each model:
@@ -188,6 +192,7 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 - [Logit Stacking, Rank Averaging & Synchronous Fold Protocol](./references/logit_stacking_rank_blend.md)
 - [Riemannian Hypersphere Fréchet Ensembling & Boundary Rules](./references/riemannian_hypersphere_frechet_blend.md)
 - [AUC-Direct FFT Ensembling & Foundation Transformers](./references/auc_direct_fft_blend.md)
+- [Tabular LLMs, Generative Transformers & Foundation Models](./references/tabular_llms_generative_transformers.md)
 - [Autonomous Multi-LLM Competitive Workflow](../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
 
 

@@ -5,7 +5,7 @@
 **2nd Place Solution**: *2nd Place - Autonomous Codex Yolo!* by Chris Deotte (`@cdeotte`, Senior Data Scientist at NVIDIA)  
 **Track**: Tabular Binary Classification  
 **Evaluation Metric**: Area Under the ROC Curve ($\text{ROC-AUC}$)  
-**Official Reference Notebooks**: [EDA - Predicting F1 Pit Stops](https://www.kaggle.com/code/cdeotte/eda-predicting-f1-pit-stops) by `@cdeotte` & [PS|S6|E5: RealMLP · PyTabKit](https://www.kaggle.com/code/yekenot/ps-s6-e5-realmlp-pytabkit) by `@yekenot`  
+**Official Reference Notebooks & Code**: [Chris Deotte's Open-Source 100-Model Codebase (`s6e5_f1_pit_stops`)](https://github.com/cdeotte/kaggle-playground-solutions/tree/main/s6e5_f1_pit_stops), [2nd Place Writeup](https://www.kaggle.com/competitions/playground-series-s6e5/writeups/2nd-place-autonomous-codex-yolo), [EDA - Predicting F1 Pit Stops](https://www.kaggle.com/code/cdeotte/eda-predicting-f1-pit-stops) by `@cdeotte` & [PS|S6|E5: RealMLP · PyTabKit](https://www.kaggle.com/code/yekenot/ps-s6-e5-realmlp-pytabkit) by `@yekenot`  
 **Original Source Dataset**: [F1 Strategy Dataset | Pit Stop Prediction](https://www.kaggle.com/datasets/vanshjasuja16/f1-strategy-dataset-pit-stop-prediction) (`f1_strategy_dataset_v4.csv`, 101,371 rows)
 
 ---
@@ -15,7 +15,8 @@
 | Rank / Submission | Architecture & Setup | Cross-Validation (CV) | Public LB | Private LB | Outcome / Strategic Significance |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 🥇 **1st Place (`@optimistix`)** | **50-50 Blend of AutoGluon + 186-OOF Logit Stack** (182 L1 + 4 L2 OOFs, Driver-dropped models, sample weights 0.5–1.0) | — | 0.95488 | **0.95503** | **Won by +0.00001 in literally the last minute!** Exploited adversarial Driver-drift mitigation & AutoGluon/Logit ensembling. |
-| 🥈 **2nd Place (`@cdeotte`)** | **Autonomous Codex GPT-5.5 YOLO** (218 models across 37 architectures, cuML $L_2$ Logistic Regression on logits) | 0.9552+ | 0.95487 | **0.95502** | Missed 1st by 0.00001. An unselected morning submission scored **0.95506** (would have taken 1st). Autonomous agent executed end-to-end on 4× A100 GPUs. |
+| 🥈 **2nd Place (`@cdeotte`)** | **Autonomous Codex GPT-5.5 YOLO** (219 models across 34 model classes, cuML $L_2$ Logistic Regression on logits) | 0.95520 | 0.95487 | **0.95502** | Missed 1st by 0.00001. An unselected morning submission scored **0.95506**. Autonomous agent executed end-to-end on 4× A100 GPUs. |
+| 🏆 **Open-Source 100-Model Subset (`s6e5_f1_pit_stops`)** | **100 Representative Models across all 34 Classes** (`stack/stack.py` cuML $L_2$ Logistic Regression) | **0.955280** | 0.95487 | **0.95503** | Released open-source subset (best model per class + public ports) ties **1st Place** on Private LB on its own. |
 | 🏅 **5th Place Post-Deadline (`@703572`)** | **99-Model Logit Stack + Post-Deadline Rank Average** | 0.95536 | 0.9548+ | **0.95505** | Rank-averaging Hill-Climbing and Logit-Stacking (`rankdata(p)/N`) outscored raw probability averaging (0.95503). |
 | 🏅 **8th Place (`@703539`)** | **L5 Multi-Split Ensemble** (Averaging 5-fold, 7-fold, and 10-fold L4 ensembles across 147 models) | 0.95503–0.95510 | 0.95462 | **0.95487** | Exploited split diversity (5-fold, 7-fold, 10-fold) paired with original-row vs. original-column feature policies. |
 | **Top Single Model: RealMLP** (`realmlp2_exp147`) | PyTabKit RealMLP-TD Classifier (5 seeds, PLR embeddings, SiLU) | **0.954426** | 0.95382 | 0.95421 | Clear individual champion model across all architectures. |
@@ -312,6 +313,27 @@ realmlp_params = {
     ],
 }
 ```
+
+### 4.4 Chris Deotte's Open-Source 100-Model Recipe Progression (`s6e5_f1_pit_stops`)
+The [`s6e5_f1_pit_stops`](https://github.com/cdeotte/kaggle-playground-solutions/tree/main/s6e5_f1_pit_stops) repository preserves 100 models spanning 34 model classes on one shared 5-fold `StratifiedKFold(5, shuffle=True, random_state=42)` split (achieving **0.955280 CV / 0.95503 Private LB** alone). Key per-family optimization progressions:
+
+- **RealMLP Progression (`0.948437 -> 0.954426` OOF)**:
+  - Without original rows (`realmlp_shape_state_te_no_original`): `0.950537` OOF.
+  - Appending original rows + fold-local Pipeline A + SiLU `[512, 256, 128]`, `n_ens=20` jumped to `0.954037` $\to$ wider `[768, 384, 192]`, `n_ens=24`, `wd=0.014`, `dropout=0.03`: `0.954111`.
+  - Switching to **Mish activation**, 6 epochs, `plr_sigma=0.94`, extended arithmetic Pipeline A, and bagging 5 models/fold with `dropout=0.04` (`realmlp_pipeline_a_mish_5seed_drop04`) reached **`0.954426` OOF** (best single model overall).
+- **XGBoost Progression (`0.940117 -> 0.953553` OOF)**:
+  - `xgb_relrank_original_w035` (485 cols, original weight `0.35`): `0.951866` $\to$ `xgb_group_residuals_original_w08` (855 cols, 13-grouping residuals + source flag, TE on keys $\le 25\text{k}$ levels, original weight `0.8`): `0.952977` $\to$ `xgb_hazard_pit_window_cadence_original_w08` (1,478 cols with hazard, pit-window, cadence and hash keys, TE on keys $\le 750$ levels, `lr=0.006`, original weight `0.8`): **`0.953553` OOF**.
+- **CatBoost Progression (`0.945827 -> 0.953404` OOF)**:
+  - `catboost_pit_state_cats_original_w115` (artifact categories + 6 original priors + formulas, ranks, hazard/pit-state/strategy crosses, **original row weight `1.15`**, `depth=9`): **`0.953404` OOF**.
+- **LightGBM Progression (`0.946744 -> 0.953023` OOF)**:
+  - Contrary to XGBoost (which scaled to 1,478 columns), LightGBM peaked on a **lean 55-feature matrix** with heavy original row weighting (`w=1.25`), extreme column subsampling (`feature_fraction=0.10`), and slow learning rate (`lr=0.012`) in `lgbm_lean_original_w125_slow` (**`0.953023` OOF** vs `0.948752` on 638 snap/pair columns).
+- **TabM & TabICL v2 (`0.953371` and `0.950827` OOF)**:
+  - `tabm_group_stats_digits_d512_reseed` ($k=32$, $4\times 512$, embedding dim 32, fold-local base + artifact digits + group stats + all original rows): **`0.953371` OOF**.
+  - `tabicl_v2_finetune_original_append` (fine-tuned TabICL v2 with all original rows appended to every fold): **`0.950827` OOF** (up from `0.949538` zero-shot).
+- **11 TALENT Library Deep Tabular Models (`models/talent`)**:
+  - `ExcelFormer` (`0.946912`), `AMFormer` (`0.944542`), `MLP-PLR` (`0.943629`), `Trompt` (`0.943453`), `TabR` (`0.943445`), `AutoInt` (`0.942763`), `GrowNet-style` (`0.942110`), `SAINT-style` (`0.941141`), `ModernNCA` (`0.941058`), `DCNv2` (`0.939530`), and `NODE` (`0.936121`).
+- **8 Public Notebooks Ported to Shared Folds (`models/public_models`)**:
+  - Including `yekenot_realmlp_pytabkit_v16` (`0.954088`), `yekenot_realmlp_pytorch` (`0.953484`), `amanatar_realmlp` (`0.953442`), and `rohit8527kmr7518_catboost` (`0.952703`).
 
 ---
 

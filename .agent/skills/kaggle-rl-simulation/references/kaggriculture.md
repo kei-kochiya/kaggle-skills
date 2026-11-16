@@ -214,3 +214,28 @@ If conducting PPO self-play:
 - [ ] **Discounting**: Use $\gamma = 1.0$. Do not apply standard $\gamma = 0.99$ discounting (at turn 719, $0.99^{718} \approx 0.0007$, completely erasing endgame liquidation value).
 - [ ] **KL Regularization**: Anchor updates with $\mathcal{L}_{\mathrm{KL}} = 0.2 \times \mathrm{KL}(\pi_{\mathrm{teacher}} \parallel \pi_{\mathrm{policy}})$.
 - [ ] **Exclude Forced Moves**: Exclude deterministic rule-forced actions (`BUY_LAND`, terminal sell) from the actor loss gradient, but retain their state consequences for the critic value target.
+
+---
+
+## 7. Top-2 Operational Blueprints (1st MMPQ & 2nd vmerckle)
+
+### 7.1 MMPQ (1st Place) Neural, Estimator & PPO-Masking Blueprint
+1. **Within-Farm 2D RoPE**: Apply 2D Rotary Position Embeddings (`base=100`, 8 horizontal + 8 vertical + 16 unrotated dims per 32-dim head) strictly between `Cell` and `Unit` tokens belonging to the *same* farm (`Global`, `Product`, `Market`, and cross-farm attention remain unrotated).
+2. **50-Dim Opponent Hidden Inventory Estimator**: Infer hidden opponent warehouse + carried quantities across 12 products from board action diffs (separating overnight growth), $\Delta\text{Market} + \text{TownConsumption} - \text{OurTrades}$, and unexplained opponent bank deltas solved against fixed-price purchase combinations (taking minimum feasible quantities and emitting 24 uncertainty + 2 ambiguity features; `0.702` MAE overall, `86.80%` exact match).
+3. **Zero-Sum Paired Value Head**:
+   $$z_i = f_\theta(o_i) + (a\tau + b)\frac{m_i - m_{1-i}}{20{,}000}, \qquad V_i = \frac{2\exp(z_i)}{\exp(z_0) + \exp(z_1)} - 1 \quad (V_0 + V_1 = 0)$$
+   Combine both players' observations at the same timestep with trainable balance-difference scalars $(a, b)$ scaled by game progress $\tau \in [0, 1]$.
+4. **Sequential Conflict Masking Inside PPO Rollouts (`Final B`)**:
+   - Mask invalid/ineffective moves (`E, F, G`) and renormalize before sampling so PPO computes gradients on masked probabilities.
+   - Compute parallel logits for all Units in one pass, then **sample sequentially (farmer $\to$ workers)** while masking duplicate target cells (`C`) and depleted seed stocks (`D`).
+   - Exclude post-sampling forced market overrides (night overflow `A`, final-2-turn liquidation & adjacent `DROP` `B`) from PPO old/new log-probabilities.
+5. **Targeted Recovery BC on Plateau**: When PPO stalls or forgets rare multi-step sequences (e.g., 4th plot, tomatoes), inject 1–3 epochs of targeted public + LNS/DP solver demonstrations with $\mathcal{L}_{\mathrm{BC}} = \mathrm{CE}_U + \mathrm{CE}_M + 0.05(D_U + D_M) - 0.10(H_U + H_M)$ keeping normalized entropy $\approx 0.10$, re-warm the critic, and resume PPO.
+
+### 7.2 Victor Mercklé (`vmerckle`, 2nd Place) Low-Budget 30-GPU-Hour Recipe
+- **37M Encoder-Decoder HourFormer (`github.com/vmerckle/kaggriculture`)**: 19M encoder reads 217 tokens/hour + learned 23-team embedding (dropped 10% of the time); 17M decoder emits 26 sequential actions (10 market orders $\to$ 16 worker `(op, item, qty)` tuples).
+- **3-Stage 30× RTX 5090 GPU-Hour Schedule**:
+  1. **BC (25h / 4h wall-clock on 8 GPUs)**: `110k` steps × `1.8k` game-hours across `22k` top-23 replays (`AdamW`, `lr 1e-3 -> 1e-4` in 300 steps + cosine decay, `wd=0.1`, `dropout=0.1`).
+  2. **Top-Team Fine-Tune (1m)**: `600` steps strictly on #1 MMPQ replays (`lr=5e-5`).
+  3. **Hard-Example PPO (2h 10m)**: `15` iterations × `688` games (`temp=0.5`), `22` steps of `44×512` game-hours/iter (`lr=2e-5`, `GAE λ=1.0`, target KL `0.05`), with **25% of each iteration replaying seeds lost in earlier iterations** (max twice per seed).
+- **Suppress Cyclic Micro-Trades During RL, Add Deterministic Clutch at Inference**: Block hourly wheat-trading during RL so policy updates do not waste compute on rock-paper-scissors timing cycles ($A > B > C > A$); bolt on the deterministic Wheat Trading Clutch (`+$700`) + overflow/endgame recall rules (`+$600`) only at final submission.
+- **Last-$x$-Hour Mini-Game Debugging**: Test optimal endgame play on $x=1..5$ final-hour slices using simple tree search to expose RL value/execution bugs quickly.

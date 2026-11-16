@@ -4,8 +4,9 @@ The **Kaggriculture** simulation competition (720 turns, 30 game days, 2-player 
 
 Across more than 10,200 competing teams, the gold medal bracket converged on a striking theoretical lesson: **pure reinforcement learning from scratch completely collapsed**, while **Behavioral Cloning (BC), executed-state imitation, hierarchical day compilers, and hybrid neural-combinatorial planners dominated the leaderboard**.
 
-This handbook synthesizes the post-competition writeups and code releases from the confirmed top medalists:
-- **1st Place**: Team M & M & P & Q (Alternating BC, synthetic heuristic teachers, and large-scale self-play PPO)
+This handbook synthesizes the post-competition writeups and code releases from the confirmed top medalists (out of 10,148 competing teams):
+- **1st Place**: Team M & M & P & Q (`msd0110`, `morim3`, `Piiiiiiiii`, `qistripute` — [Writeup](https://www.kaggle.com/competitions/kaggriculture/writeups/1st-place-solution-our-journey-to-becoming-profe): 10.2M Transformer with within-farm 2D RoPE, 50d opponent inventory estimator, LNS+DP heuristic solver, alternating BC $\leftrightarrow$ self-play PPO over 8.29M–9.04M games, and PPO-masked action corrections)
+- **2nd Place**: Victor Mercklé (`vmerckle` — [Writeup](https://www.kaggle.com/competitions/kaggriculture/writeups/trading-clutch-no-b200) & [GitHub Repo](https://github.com/vmerckle/kaggriculture): 37M Encoder-Decoder HourFormer trained in **30 RTX 5090 GPU-hours (~$10)** via 22k-game BC + 1-min MMPQ fine-tune + 2h10m hard-example PPO + Wheat Trading Clutch algorithm & 2 override rules)
 - **3rd Place**: Team DSM (`denden12`, `shimishige`, `masspeaks` — gen70 10.4M Transformer, C++/Rust engines, multi-stage post-processing)
 - **4th Place**: Team Farmcore (Iaroslav Pudovkin — pure BC, executed-action training, one-pass transformer + corrector, zero RL/search)
 - **6th Place**: Split-game BC/PPO (BC opening Days 1–11 + PPO mid/endgame Days 12–30, dual CPU/GPU leagues)
@@ -98,7 +99,85 @@ The official engine resolves simultaneous trades by matching orders **slot by sl
 
 ## 3. Deep-Dive: Solution Architectures
 
-### A. Team DSM (3rd Place) — End-to-End Transformer + PPO + Post-Processing
+### A. Team MMPQ (1st Place) — Alternating BC & Self-Play PPO, 2D Within-Farm RoPE, Opponent Inventory Estimator, LNS+DP Solver & RL Action Corrections
+
+Team MMPQ (`msd0110`, `morim3`, `Piiiiiiiii`, `qistripute`) won 1st place out of 10,148 teams using two ~10.2M-parameter Transformers (`Final A`: 8.29M games / 11.922B player steps; `Final B`: 9.04M games) built in Rust + distributed JAX (`30× A30 + 18× A100`, ~25–26 full games/s including PPO updates).
+
+#### 1. Model Architecture & 6 Token Types (`~10.2M` Params)
+- **Backbone**: Pre-LayerNorm Entity Transformer with **12 layers, width 256, 8 heads (`head_dim=32`), FFN 1024, GELU**, balancing cluster rollout throughput with Kaggle CPU submission limits.
+- **6 Token Types**:
+  - `Global` (34 dims): time, bank balances, unlocked land, shops, total inventory, free warehouse capacity, worker count.
+  - `Cell` (34 dims $\times$ 200 cells across both farms): farm identity, coords, terrain, crop/livestock state, Unit occupancy.
+  - `Unit` (22 dims): farm identity, coords, farmer/worker type, carried inventory, warehouse access.
+  - `Product` (19 dims $\times$ 12 products): identity, warehouse inventory, seed inventory, market inventory, price, town demand.
+  - `Opponent Inventory Estimate` (50 dims): estimated total/carried quantities, uncertainties, unresolved spending, price-floor sales ambiguity.
+  - `Market Slot` (10 dims $\times$ 10 slots): slot order index.
+  - Explicit aggregate features (total warehouse inventory, free capacity, total carried across Units and per Unit) were added so the 12-layer encoder did not need to learn summation across many tokens.
+- **Within-Farm 2D RoPE**: Applied 2D Rotary Position Embeddings (`base=100`, 8 horizontal + 8 vertical + 16 unrotated dims per head) **strictly between Cell and Unit tokens on the same farm**, because coordinate differences across two separate farms have no physical meaning (tokens across farms still attend via standard unrotated projections).
+- **Single-Pass Parallel Action Heads**: Avoided slow autoregression by emitting all logits in one forward pass:
+  - *Unit Head (500 candidates/Unit)*: 480 `PICKUP`/`PLACE` (`2 ops × 12 products × 20 quantities`), 5 crop-specific `PLANT`, 15 move/water/other.
+  - *Market Head (1,903 candidates $\times$ 10 slots)*: 900 `SELL` (factorized into 9-product distribution $\times$ product-specific `1–100` quantity distribution), 1,000 purchase (`5 seeds + wheat + fertilizer + 3 livestock × 100 quantities`), `no-order`, `HIRE`, `BUY_LAND`.
+- **Zero-Sum Paired Value Head**:
+  $$z_i = f_\theta(o_i) + (a\tau + b)\frac{m_i - m_{1-i}}{20{,}000}, \qquad V_i = \frac{2\exp(z_i)}{\exp(z_0) + \exp(z_1)} - 1 = \tanh\!\left(\frac{z_i - z_{1-i}}{2}\right)$$
+  where $V_0 + V_1 = 0$, $m_i$ is bank balance, $\tau \in [0, 1]$ is elapsed game fraction, and $a, b$ are trainable scalars.
+
+#### 2. 50-Dimensional Opponent Hidden Inventory Estimator
+Because opponent warehouse and carried inventories are hidden, MMPQ built a Rust state observer tracking 12 products by combining: (i) visible board updates (separating overnight growth from Unit harvesting/feeding/planting/fertilizing), (ii) market supply changes minus town consumption and own trades, and (iii) unexplained opponent bank-balance deltas matched against fixed-price seed/livestock combinations (adding minimum feasible quantities across valid combinations and emitting 24 uncertainty dims + 2 ambiguity dims). Evaluated across 197,725 transitions (275 game-player pairs):
+- **Total inventory**: **0.702 units MAE** overall (**1.926** when nonzero), **86.80% exact match**.
+- **Carried inventory**: **0.700 units MAE** overall (**2.799** when nonzero), **88.07% exact match**.
+
+#### 3. Alternating BC $\leftrightarrow$ Self-Play PPO Cycle
+1. **Diverse Teacher Initialization**: Initialized with 30 epochs of BC across **34 diverse public submissions** (game-level split). Deliberately selected the 34-teacher pool even though it scored `10–90` immediately post-BC vs `82–18` for a narrow teacher pool, to preserve strategy diversity for PPO. Froze the encoder/policy and pretrained the value head before PPO ($\gamma=1.0, \text{GAE }\lambda=0.97$ — necessary since at horizon $719$, $0.97^{718} \approx 3\times 10^{-10}$, making intermediate critic estimates critical).
+2. **Pure Terminal PPO**: Optimized strictly terminal outcome ($+1$ win, $0$ draw, $-1$ loss; **zero intermediate rewards**), Huber value loss ($\times 2$), PPO clip $\epsilon=0.2$, global cross-GPU advantage normalization, and forward KL penalty $D_{\text{KL}}(\rho \parallel \pi_\theta)$ to a frozen reference $\rho$ promoted when a candidate won $\ge 70/100$ games.
+3. **Targeted Recovery BC on Plateau**: Whenever PPO plateaued or forgot hard multi-step sequences (e.g., buying/farming the **4th land plot** or switching to **tomatoes** under pizza/greengrocer spikes), they added targeted replays (e.g., 849 public 4th-plot games + 300 solver games) for **1–3 BC epochs** with entropy + KL regularization:
+   $$\mathcal{L}_{\mathrm{BC}} = \mathrm{CE}_U + \mathrm{CE}_M + 0.05(D_U + D_M) - 0.10 H_U - 0.10 H_M$$
+   keeping normalized entropy $H(p)/\log K \approx 0.12$ (`0.1271` Unit, `0.1168` Market). Even though the short BC checkpoint lost `0–100` to the pre-BC policy, resuming PPO (with lr warmup $0 \to 5\times 10^{-5}$ over 240 Adam steps) surpassed the old ceiling while retaining the new strategy.
+
+#### 4. LNS + Per-Cell DP Heuristic Solver
+- Precomputed per-cell future action sequences via independent cell Dynamic Programming $V(d, s) = \max_a [r(a) + \gamma V(d+1, s')]$ against projected market prices, then ran **Large Neighborhood Search (LNS)** with simulated annealing over daily worker routes, hiring, and land expansion.
+- Complete plans were scored by farm-wide simulated net cash-flow difference through Day 29 (explicitly modeling price depression from bulk melon sales). Reached #1 Public LB (~3,150) in mid-September, served as a BC teacher for price-spike adaptations, and ran on Day 29 in `Final A`.
+- *Note*: A hierarchical dawn-macro NN + heuristic executor failed to match full-turn models due to slow CPU collection and mismatch with worker execution/sale timing.
+
+#### 5. The 8 Action Corrections (A–H) & Incorporating Rules Into PPO Rollouts
+Near the deadline, replay inspection uncovered warehouse overflow losses, unsold terminal goods, and parallel Unit conflicts. MMPQ designed 8 rules:
+- **A**: Sell inventory that would overflow warehouse at night; **B**: Sell warehouse inventory on final 2 turns + force adjacent loaded Units to `DROP` on turn 719 (cancel purchases); **C**: Resolve duplicate Unit targets on same cell; **D**: Remove planting actions exceeding remaining seeds; **E/F/G**: Mask ineffective fertilize/livestock/out-of-bounds actions; **H**: Switch to LNS+DP solver on Day 29 (helped earlier checkpoints in `Final A`, hurt after 1 more day of NN training).
+
+| Submission | How Rules Were Applied | Record vs `Victor A (56710008)` | Record vs `Victor B (56722220)` |
+| :--- | :--- | :---: | :---: |
+| **`Final A (56701470)`** | Inference-time corrections A–G + Day 29 solver (H) | **81.0%** (`136–32`) | **41.9%** (`223–309` — would have placed 2nd!) |
+| **`Final B (56711476)`** | **Rules E/F/G masked before sampling; C/D masked sequentially (farmer $\to$ workers); overridden A/B excluded from PPO log-probs during final RL** | **90.7%** (`39–4`) | **61.1%** (`386–246` — secured **1st Place**) |
+
+- **Net2Net Expansion & Replay-Hiding Strategy**: Expanded Transformers `6 -> 12 -> 24` layers (`10M -> 20M -> 30M`) by zero-initializing output projections of new attention/FFN blocks ($F(x)=0$) and copying Adam moment estimates; deliberately submitted weaker decoy agents after testing a #1 model to prevent rivals from scraping active top-2 submission replays.
+
+---
+
+### B. Victor Mercklé (`vmerckle`, 2nd Place) — 37M HourFormer in 30 GPU-Hours (~$10), Hard-Example PPO & The Wheat Trading Clutch
+
+Victor Mercklé (`vmerckle`) finished 2nd with **~1.5k lines of plain Python/PyTorch** ([`github.com/vmerckle/kaggriculture`](https://github.com/vmerckle/kaggriculture)), training a 37M-parameter model for only **30 RTX 5090 GPU-hours (~$10)** and boosting head-to-head win rate against MMPQ from **9% to 39%** on the final day (including `58.1%` / `309–223` against MMPQ's `Final A`).
+
+#### 1. 37M-Parameter Encoder-Decoder HourFormer Architecture
+- **19M Encoder** (run 719 times/game): Reads **217 tokens** per hour (1 summary token, 200 tiles of both farms, 16 worker slots) + a learned **Team Conditioning Embedding** identifying which of 23 cloned teams to imitate.
+- **17M Autoregressive Decoder**: Emits the hour's 26 actions one by one: **10 market orders first**, then **16 worker commands** each encoded as `(operation, item, quantity)`.
+
+#### 2. The 30 RTX 5090 GPU-Hour Simplified Recipe
+1. **Behavioral Cloning (25 GPU-hours / 4h wall-clock on 8 GPUs)**:
+   - Dataset: **22,000 scraped games from the top 23 leaderboard teams** (up to 15h before deadline).
+   - `110,000` steps of `1,800` game-hours each, `AdamW` ($\text{lr}: 10^{-3} \to 10^{-4}$ over 300 warmup steps + cosine decay, `weight_decay=0.1`, `dropout=0.1`), with the team ID token masked out in `10%` of game-hours to force generalization.
+2. **Top-Team Fine-Tuning (1 minute)**: `600` steps strictly on 1st-place **MMPQ** replays at `lr=5e-5`.
+3. **Hard-Example PPO Fine-Tuning (2h 10m)**:
+   - Started from fine-tune step 600 playing against older fine-tune checkpoints: `15` iterations of `688` games (`temperature=0.5`), each followed by `22` optimizer steps of `44 × 512` game-hours (`lr=2e-5`, 20 warmup steps, `GAE λ=1.0`, target KL `0.05`).
+   - **25% Lost-Game Replay**: `25%` of every iteration's rollout games replayed seeds lost in earlier iterations (each lost game replayed at most twice).
+
+#### 3. The "Wheat Trading Clutch" (+$700 Cash) & Two Deterministic Rules (+$600)
+- **Suppressing Cyclic Micro-Trades in RL, Unleashing at Submission**: In self-play RL, hourly wheat front-running creates toxic rock-paper-scissors cycles ($A > B > C > A$) that waste GPU updates chasing `$10` timing edges instead of growing tomatoes. Victor **actively prevented wheat trading during all RL training**, then deployed an external deterministic **Wheat Trading Clutch** algorithm *only on his final submission*, adding **+$700** and jumping win rate vs MMPQ from `9%` to `39%`.
+- **Two Post-Forward Rules (+$600)**:
+  1. Sell any end-of-day overflow inventory before expiry (`+$350` to `+$800`).
+  2. Endgame recall: force workers to walk to the shed and sell held inventory before game end (`+$30` to `+$180`).
+- **Last-$x$-Hour Mini-Game Tree Search Debugging**: Built isolated mini-games starting from realistic states with only $x=1$ to $x \le 5$ hours remaining, where exact tree search revealed optimal endgame liquidation and immediately exposed subtle RL/execution bugs.
+
+---
+
+### C. Team DSM (3rd Place) — End-to-End Transformer + PPO + Post-Processing
 
 #### 1. Input Tokenization (266 Tokens)
 ```text
@@ -130,7 +209,7 @@ DSM layered strict rule interventions over the raw model predictions:
 
 ---
 
-### B. Team Farmcore (4th Place) — One-Pass Transformer + Joint Corrector
+### D. Team Farmcore (4th Place) — One-Pass Transformer + Joint Corrector
 
 Farmcore achieved 4th place using **zero self-play reinforcement learning and zero tree search**, relying purely on an elegant one-pass architecture and clean data engineering:
 
@@ -150,7 +229,7 @@ flowchart LR
 
 ---
 
-### C. 26th Place Gold — Macro BC + Day Compiler
+### E. 26th Place Gold — Macro BC + Day Compiler
 
 ```mermaid
 sequenceDiagram
@@ -177,7 +256,7 @@ sequenceDiagram
 
 ---
 
-### D. 28th Place Gold (吃白饭的大肥鱼) — Hybrid 10-Day BC + 20-Day Rust Planner
+### F. 28th Place Gold (吃白饭的大肥鱼) — Hybrid 10-Day BC + 20-Day Rust Planner
 
 - **The Problem**: Pure heuristics struggled with opening versatility (shop lottery variations, initial quadrant layout). Pure neural policies struggled with endgame cash maximization and shed liquidation.
 - **The Protocol**:
@@ -230,8 +309,9 @@ The following intuitive ideas were tested extensively by gold medalists and deci
 
 | Rank | Team / Author | Model Family | Key Innovation | Compute / Framework |
 | :---: | :--- | :--- | :--- | :--- |
-| 🥇 **1st** | M & M & P & Q | 10M Transformer | Alternating BC & Self-Play PPO; synthetic heuristic teachers; paired zero-sum reward | Multi-host JAX cluster |
-| 🥉 **3rd** | DSM | 10.4M Transformer (gen70) | Replay BC on MMPQ; value pre-warm PPO; Rust engine (29.8k g/s); post-processing rules | JAX / C++ `kagsim` / Rust |
+| 🥇 **1st** | **M & M & P & Q** (`msd0110`, `morim3`, `Piiiiiiiii`, `qistripute`) | 10.2M Entity Transformer | Within-farm 2D RoPE; 50d opponent inventory estimator; LNS+DP heuristic solver; alternating BC $\leftrightarrow$ PPO + PPO-masked rules | 30× A30 + 18× A100 / Rust + JAX |
+| 🥈 **2nd** | **Victor Mercklé (`vmerckle`)** | 37M Enc-Dec HourFormer | 22k-game BC + 1-min MMPQ fine-tune + 25% lost-game PPO; suppressed cyclic wheat trades in RL, added Wheat Trading Clutch at submission | **30× RTX 5090 GPU-hours (~$10)** / PyTorch |
+| 🥉 **3rd** | **DSM** (`denden12`, `shimishige`, `masspeaks`) | 10.4M Transformer (gen70) | Replay BC on MMPQ; value pre-warm PPO; Rust engine (29.8k g/s); post-processing rules | JAX / C++ `kagsim` / Rust |
 | 🏅 **4th** | Farmcore | 8M Transformer | Pure BC on executed state changes; 1-pass draft + 6-layer joint corrector; checkpoint soup | 5.5 A100-hours / PyTorch |
 | 🏅 **6th** | 6th Place | Split Transformer | Split-game policy: BC Days 1–11 + PPO Days 12–30; dual CPU/GPU evaluation leagues | Dual CPU/GPU League |
 | 🏅 **7th** | DECEM | 8.2M Entity Transformer | Switched to BC in final 9 days; conditioned on (Team, Version, Win); pure NumPy inference (0.1s) | Single GPU + NumPy CPU |
