@@ -1,20 +1,22 @@
 # Tabular LLMs, Generative Transformers & Foundation Model Recipes
 
-Modern tabular competitions (especially GReaT/LLM-synthesized Playground Series datasets and high-signal tabular benchmarks) have seen **generative causal language models, any-order transformers, and full-context foundation models** outperform standalone GBDTs and dominate stacking weights (~70%–80% of final meta-learner output in S6E10).
-
-Refer to [`Handbook/tabular/playground-s6e10-airline-satisfaction.md`](../../../../Handbook/tabular/playground-s6e10-airline-satisfaction.md) and [`Handbook/tabular/playground-s6e9-will-buy-ev.md`](../../../../Handbook/tabular/playground-s6e9-will-buy-ev.md) for full benchmark evidence and ablations.
+Generative causal language models, any-order transformers, and full-context tabular foundation models provide strong orthogonal signal to GBDTs and MLPs—frequently capturing the dominant share of meta-stacker weights in synthetic and high-signal tabular benchmarks.
 
 ---
 
-## 1. Recipe 1: Target-First Tabular LLM ("The Storyteller" — GReaT Replica + Bayes Log-Sum-Exp)
+## 1. Recipe 1: Target-First Tabular LLM ("The Storyteller" — Generative Replica + Bayes Log-Sum-Exp)
 
-Introduced by Chris Deotte (`@cdeotte`) in S6E9 (`0.946485` OOF) and S6E10 (`0.962425` OOF single model / `0.962452` Target-Anywhere), **The Storyteller** flips classification from $P(y \mid \mathbf{x})$ to generative density estimation $P(\mathbf{x} \mid y)$, inverting via Bayes' rule. It directly mirrors `GReaT` (`be-great`) data generation.
+**The Storyteller** flips discriminative classification $P(y \mid \mathbf{x})$ into conditional generative density estimation $P(\mathbf{x} \mid y)$, inverting via Bayes' rule. This is particularly effective on LLM-synthesized tables (`GReaT` / autoregressive tabular synthesizers).
 
-### Step 1: Text Serialization & Replica Pretraining (Original Data Only)
-Format every row identically to how `GReaT` writes training text (`ints` as `'36'`, `floats` as `'0.0'`, `NaN` as `'None'`, target as `'True'`/`'False'`), joined by `", "` using **GPT-2's BPE tokenizer** (digit-by-digit tokenizers such as Qwen performed worse on Playground GReaT data):
+### Step 1: Text Serialization & Original-Data Pretraining
+Format every row deterministically (`ints` as `'36'`, `floats` as `'0.0'`, `NaN` as `'None'`, binary target as `'True'`/`'False'`), joined by `", "` using a byte-pair tokenizer such as **GPT-2 BPE** (preserves multi-digit numerical tokens better than digit-by-digit tokenizers on standard LLM-generated tables):
 
 ```python
-def format_row_great(row_dict: dict, cols_order: list[str]) -> str:
+import numpy as np
+
+
+def format_row_tabular_text(row_dict: dict, cols_order: list[str]) -> str:
+    """Serialize a tabular row into comma-separated 'col is val' text."""
     parts = []
     for c in cols_order:
         v = row_dict[c]
@@ -28,31 +30,43 @@ def format_row_great(row_dict: dict, cols_order: list[str]) -> str:
     return ", ".join(parts)
 ```
 
-Pretrain a **GReaT replica exclusively on the original dataset** (zero competition labels) for **60 epochs** (a 60-epoch replica beat an 8-epoch replica by `+0.0012` final AUC in S6E10; starting from plain GPT-2 is much worse):
+When an uncorrupted source/reference dataset exists, pretrain a causal LM replica **exclusively on original reference rows** (never touching competition validation/test labels) for a full cosine schedule (e.g., `60 epochs`, matching full replica convergence rather than short `8-epoch` warmups):
 
 ```python
 from be_great import GReaT
 
-# Pretrain replica solely on original_df (e.g. 129,880 rows)
+# Pretrain generative replica solely on reference/original data
 replica = GReaT(llm="gpt2", batch_size=16, epochs=60)
 replica.fit(original_df)
-# Save state_dict for fold classifiers (gpt2, gpt2-medium, gpt2-large, EleutherAI/gpt-neo-125M)
+# Reuse saved weights to initialize per-fold fine-tuning (gpt2, gpt2-medium, gpt2-large, gpt-neo-125M)
 ```
 
 ### Step 2: Fold Classifier Fine-Tuning
-For each CV fold, initialize from the 60-epoch replica checkpoint and fine-tune on the fold's training rows with **the target placed first** (or at a random position among all columns for the **Target-Anywhere** variant) and all feature columns in a fresh random order every step, computing causal LM cross-entropy across all tokens (`8 epochs`, `AdamW`, `lr=5e-5` linear decay to `0`, `batch_size=32`, `bf16` on A100/L4; use `fp16` + `GradScaler` on T4 GPUs where `bf16` emulates slowly).
+For each CV fold, initialize from the pretrained replica checkpoint and fine-tune on the fold's training rows with **the target placed first** (or at a uniformly sampled random column position for the **Target-Anywhere** variant) and all feature columns in a fresh random permutation every step. Optimize causal LM cross-entropy across all tokens (`AdamW`, `lr=5e-5` linear decay to `0`, `bf16` on Ampere/Blackwell/Hopper GPUs; use `fp16` + `GradScaler` on Turing GPUs).
 
 ### Step 3: Multi-Order Bayes Readout (`logsumexp`)
-Score each validation/test row twice (with prefix `"target is True,"` and `"target is False,"`) across `K=30` random feature permutations and pool via `logsumexp`:
+Score each validation/test row under both target prefixes across `n_orders` (typically `16–32`) random feature permutations and pool via `logsumexp`:
 
 ```python
 import math
-import torch
 import numpy as np
+import torch
 from scipy.special import logsumexp
 
-def score_storyteller_row(model, tok, feat_dict: dict, cols: list[str], prior_pos: float, n_orders: int = 30, rng=None) -> float:
-    """Compute Bayes log-odds(y=1 | x) averaged over n_orders random column permutations."""
+
+def score_storyteller_row(
+    model,
+    tok,
+    feat_dict: dict,
+    feat_cols: list[str],
+    prior_pos: float,
+    target_col: str = "target",
+    pos_val: str = "True",
+    neg_val: str = "False",
+    n_orders: int = 30,
+    rng=None,
+) -> float:
+    """Compute Bayes log-odds(y=1 | x) pooled across random column permutations."""
     if rng is None:
         rng = np.random.default_rng(42)
     eos = tok.eos_token
@@ -65,38 +79,44 @@ def score_storyteller_row(model, tok, feat_dict: dict, cols: list[str], prior_po
             tok_lp = lp.gather(-1, ids[0, 1:, None])[:, 0]
         return tok_lp[n_prefix - 1:].sum().item()
 
-    n_true = len(tok("satisfaction is True,").input_ids)
-    n_false = len(tok("satisfaction is False,").input_ids)
+    pos_prefix = f"{target_col} is {pos_val},"
+    neg_prefix = f"{target_col} is {neg_val},"
+    n_pos = len(tok(pos_prefix).input_ids)
+    n_neg = len(tok(neg_prefix).input_ids)
 
-    ll_true, ll_false = [], []
+    ll_pos, ll_neg = [], []
     for _ in range(n_orders):
-        perm = rng.permutation(cols).tolist()
-        body = " " + format_row_great(feat_dict, perm) + eos
-        ll_true.append(log_p("satisfaction is True," + body, n_true))
-        ll_false.append(log_p("satisfaction is False," + body, n_false))
+        perm = rng.permutation(feat_cols).tolist()
+        body = " " + format_row_tabular_text(feat_dict, perm) + eos
+        ll_pos.append(log_p(pos_prefix + body, n_pos))
+        ll_neg.append(log_p(neg_prefix + body, n_neg))
 
     log_prior_ratio = math.log(prior_pos / (1.0 - prior_pos))
-    return log_prior_ratio + float(logsumexp(ll_true) - logsumexp(ll_false))
+    return log_prior_ratio + float(logsumexp(ll_pos) - logsumexp(ll_neg))
 ```
 
-- **Target-Anywhere Variant**: Place the target at a random column position during training (`24 epochs` on GPT-2 small reached `0.962452` OOF in S6E10) and score by averaging per-order log-likelihood ratios over 30 random orders.
-- **Warning on Hybrid BCE**: Adding a discriminative BCE loss term inside the generative fine-tune (`GenHybrid`) shifts the model away from pure $P(\mathbf{x} \mid y)$ density and typically *lowers* both standalone OOF and stack diversity compared to pure generative training (`GenPure`).
+- **Target-Anywhere Variant**: Place the target at a random column position during training (~20–24 epochs on compact backbones) and score by averaging per-order log-likelihood ratios across permutations.
+- **Avoid Hybrid BCE Collapse**: Adding a discriminative BCE loss directly inside generative Storyteller fine-tuning shifts weights away from pure $P(\mathbf{x} \mid y)$ density estimation and often hurts both standalone accuracy and ensemble orthogonality compared to pure generative cross-entropy (`GenPure`).
 
 ---
 
 ## 2. Recipe 2: Target-Last Tabular LLM ("The Detective" — Single-Pass Causal Classifier)
 
-When data is *not* generated by an autoregressive LM (or when fast 1-pass inference is required), **The Detective** trains a causal LM on shuffled feature prompts with the target placed **last**:
+When fast 1-pass inference is required or the data does not follow a GReaT-style synthesis process, **The Detective** trains a causal LM on randomly permuted feature prompts with the target placed **last**:
 
 ```text
-Gender is Female, Customer Type is Loyal Customer, ..., Arrival Delay in Minutes is 0.0, satisfaction is True
+<col_1> is <val_1>, <col_2> is <val_2>, ..., <col_M> is <val_M>, <target_col> is <label_val>
 ```
 
-- **Training**: Shuffle feature order every step (treating the row as an order-invariant set). Compute loss on all tokens or only the label token.
-- **1-Pass Inference**: Feed text ending right after `"<target> is"` and extract softmax probabilities of the positive vs. negative label tokens:
+- **Training**: Shuffle feature order every step so the model learns an order-invariant tabular prompt. Compute cross-entropy loss across all tokens or strictly on the final label token.
+- **1-Pass Inference**: Pass the prompt truncated right after `"<target_col> is"` and extract normalized softmax probabilities over positive vs. negative label tokens:
 
 ```python
-def predict_detective(model, tok, prompt_without_label: str, pos_tok=" True", neg_tok=" False") -> float:
+import torch
+
+
+def predict_detective(model, tok, prompt_without_label: str, pos_tok: str = " True", neg_tok: str = " False") -> float:
+    """Single-pass next-token conditional classification probability."""
     ids = tok(prompt_without_label, return_tensors="pt").input_ids.to(next(model.parameters()).device)
     with torch.no_grad():
         probs = model(ids).logits[0, -1].softmax(-1)
@@ -105,57 +125,55 @@ def predict_detective(model, tok, prompt_without_label: str, pos_tok=" True", ne
     return float((probs[t_id] / (probs[t_id] + probs[f_id])).item())
 ```
 
-*(Note: Keep Storyteller and Detective models together in the stack—they read rows in opposite directions and yield complementary errors.)*
+*(Note: Keep Storyteller and Detective predictions together in the meta-stacker—bidirectional factorization orders produce decorrelated prediction errors.)*
 
 ---
 
-## 3. Recipe 3: From-Scratch Any-Order / Bagged Generative Transformers (`AO-ARM` & `GenPure`)
+## 3. Recipe 3: From-Scratch Any-Order & Bagged Generative Transformers (`AO-ARM` / `GenPure`)
 
-If pretrained GPT-2 replicas are unavailable or columns have specialized numeric structure, build an **Any-Order Autoregressive Transformer** (`AO-ARM`, 4th Place S6E10, `0.96217` CV) or **Bagged Generative Transformer** (`GenPure`, 7th Place S6E10, `0.96119` OOF) from scratch over column/value tokens:
+When pretrained text LLMs underperform due to specialized numeric vocabularies or non-English schemas, train a compact **Any-Order Autoregressive Transformer** from scratch directly over discrete table tokens:
 
-1. **Token Vocabulary**: Map each column to `C` discrete tokens (`1 token per column`). Group rare continuous/integer values appearing `< 3` times in train+test into coarse domain/$\log_2$ bins so embeddings never overfit singletons.
-2. **Order-Free Causal Training**:
-   - Architecture: 6-layer, width-256, 8-head causal Transformer (`Pre-LayerNorm`) with learned column + value embeddings and **no fixed positional order**.
-   - **Semi-Supervised Feature Likelihood (`weight = 0.5`)**: Pretrain label-free on `train + test + original` rows (or feed unlabeled validation/test feature-only likelihood at `weight=0.5` during training, zero labels seen).
-   - **No Early Stopping**: Run full cosine decay schedules (**36 epochs**; turning off `patience=4` early stopping prevented `-0.0009` to `-0.0016` under-training in `GenPure`).
-3. **Bayes Inference + Bagging**:
-   - Score $\log P(\mathbf{x}, y=1) - \log P(\mathbf{x}, y=0)$ averaged (`log-mean-exp` / `logsumexp`) across **8–32 random column permutations**.
-   - Calibrate per fold with Platt scaling on a 10% inner holdout and **bag multiple seeds (`8–16` seeds)** directly into the $L_2$ logistic meta-stacker.
+1. **Compact Column-Value Vocabulary**: Map each column to discrete value tokens (`1 token per column`). Collapse singleton continuous/integer values occurring fewer than `3` times across `train + test` into coarse domain or $\log_2$ quantile bins so value embeddings do not memorize noise.
+2. **Order-Free Causal Transformer**:
+   - Use a Pre-LayerNorm causal Transformer (e.g., 6 layers, `d_model=256`, 8 heads) combining learned `col_embed + val_embed` with **zero fixed positional order**.
+   - **Semi-Supervised Unlabeled Feature Likelihood (`weight = 0.5`)**: Pretrain label-free on `train + test (+ orig)` rows, or include unlabeled feature-only causal likelihood from validation/test predictors (`weight = 0.5`) during training (strictly zero validation/test labels).
+   - **No Early Stopping**: Run full cosine LR decay schedules (e.g., `36 epochs`); patience-based early stopping under-trains autoregressive feature densities.
+3. **Bayes Inference + Calibration + Bagging**:
+   - Compute $\log P(\mathbf{x}, y=1) - \log P(\mathbf{x}, y=0)$ pooled over `8–32` random column orders via `logsumexp`.
+   - Fit Platt calibration on an inner holdout per fold and bag `8–16` random seeds before passing logits to a regularized linear stacker.
 
 ---
 
-## 4. Recipe 4: Self-Supervised & Order-Free Feature-Token Transformers (`Q-FT v2` & RTD Encoders)
+## 4. Recipe 4: Self-Supervised Order-Free Feature-Token Transformers (Masked & RTD Encoders)
 
-For discriminative tabular transformers (4th, 9th, and 11th Place S6E10):
-1. **Order-Free Set Encoder**: Feed each column as `col_embed + value_embed + periodic_num_embed + side_features` into a bidirectional Transformer (`ModernBERT-base` or custom QK-norm Transformer `d=256..1024`, 4–8 layers) with **all position IDs fixed to `0`** (so rows act as permutation-invariant sets) plus 1–2 `[CLS]` / summary tokens.
-2. **Self-Supervised Pretraining on `Train + Test + Original` (No Labels)**:
-   - Pretrain using **Masked-Token Reconstruction** and **Replaced-Token Detection (RTD)** — especially **Near-Value / Hard-Negative RTD** (corrupting a feature token with a plausible nearby value from the column's distribution) for `3–2,000` epochs depending on model size.
-   - *Important*: Train from scratch with RTD rather than initializing with NLP text weights (text-pretrained `ModernBERT` scored `0.96019` vs `0.96061` from scratch in S6E10).
-3. **Supervised Fine-Tuning**: Fine-tune 5-fold for `2–4` epochs with low lr (`AdamW` or `SAM` optimizer, differential/gated attention variants for diversity).
+For discriminative set transformers over tabular columns:
+1. **Permutation-Invariant Tokenization**: Encode each column as `col_embed + val_embed + periodic_num_embed + auxiliary_stats` inside a bidirectional Transformer (e.g., QK-norm Pre-LN Transformer or `ModernBERT`-style backbone, 4–8 layers) with **all position IDs fixed to `0`** plus `1–2` `[CLS]` pooling tokens.
+2. **Self-Supervised Pretraining on Unlabeled `Train + Test (+ Orig)`**:
+   - Optimize **Masked-Token Reconstruction** jointly with **Hard-Negative Replaced-Token Detection (RTD)**—corrupting tokens with plausible nearby values from the same column's empirical distribution rather than uniform random draws.
+   - Train weights **from scratch via RTD** rather than text-pretrained NLP weights whenever numeric/tabular relationships dominate.
+3. **Supervised Fine-Tuning**: Fine-tune 5-fold for `2–4` epochs with low learning rate (`AdamW` or `SAM`, optionally pairing standard softmax attention with differential/gated attention variants for ensemble diversity).
 
 ---
 
 ## 5. Recipe 5: Synthetic Labelled "Replica Worlds" Source Pretraining
 
-When the competition dataset is synthetic and an original seed dataset exists (`data.csv`):
-1. Train a noised GReaT replica solely on `original_df` (never touching competition `train.csv` or `test.csv`), applying calibrated label-flip noise and $\pm 1$ discrete jitter to match the competition's noise rate.
-2. Sample 1M+ synthetic labelled rows (`Replica Worlds`, e.g., `M32_1M` and `MB32_1M`).
-3. **Pretrain** field transformers (`m19_source_aug`, `0.961409` OOF) and BatchEnsemble MLPs (`field_be`, `pair_be`) on the Replica Worlds before fine-tuning on the 5 competition folds.
+When a competition dataset is synthesized from an uncorrupted seed dataset:
+1. Train a noised generative replica strictly on the **original dataset** (zero competition `train.csv` or `test.csv` rows), calibrating label-flip noise and discrete $\pm 1$ jitter to approximate the target competition's noise level.
+2. Sample 1M+ synthetic labelled rows (**Replica Worlds**).
+3. **Pretrain** field-token transformers or BatchEnsemble MLPs on Replica Worlds before fine-tuning across competition CV folds.
 
 ---
 
 ## 6. Recipe 6: Zero-Shot Full-Context Tabular Foundation Model (TFM) Zoo
 
-Never stop at a single TFM. On raw columns (without feeding other models' OOF predictions, which leaks targets via cross-attention!), evaluate the diverse TFM zoo on the shared 5 folds:
+Never stop at a single foundation model—different TFM pretraining priors yield orthogonal error modes on tabular manifolds:
 
-| Foundation Model | S6E10 OOF AUC (Raw) | Key Operational Tips |
-| :--- | :---: | :--- |
-| **`TabPFN-3.5`** | **0.961145** | Declare high-cardinality physical IDs (e.g., `Flight Distance`) as **categorical**; scale context rows via `fit_mode='fit_with_cache'`. Often gets the **highest non-GPT weight** in stacks. |
-| **`Kumo-Tabular` (large / small)** | 0.960036 / 0.958484 | Strong zero-shot inductive bias orthogonal to trees. |
-| **`TabFM 1.0`** | 0.958871 | Pretrained tabular foundation transformer. |
-| **`EXAONE-Tabular`** | 0.958557 | Distinct pretraining corpus & tokenization. |
-| **`LimiX-2`** | 0.958474 | Complementary foundation tabular model. |
-| **`Causilo`** | 0.958275 | Foundation model focused on structural relationships. |
-| **`TabICLv2`** | 0.958088 | Scales well with original rows appended + fine-tuning on larger context (`14k` rows). |
-| **`Mitra-v2`** | 0.957075 | Additional zero-shot diversity for meta-stacking. |
-| *9 TFMs Stacked Together* | **0.96120** | Outperforms tuned XGBoost (`0.96149` tuned, `0.95985` raw) in blend diversity (`+1.4e-4` over 219 non-TFM models). |
+| Model Family | Universal Operational Practices |
+| :--- | :--- |
+| **`TabPFN-3.5`** | Explicitly cast high-cardinality integer/decimal physical keys as **categorical** when they encode discrete generator IDs; scale to full training folds via `fit_mode='fit_with_cache'` and `ignore_pretraining_limits=True`. |
+| **`Kumo-Tabular` (large / small)** | Evaluate multiple capacity tiers for non-tree inductive bias in linear logit stacks. |
+| **`TabICLv2`** | Scales strongly when calibrated with original-source rows appended to context + larger context windows (`14k+` rows). |
+| **`TabFM` / `EXAONE-Tabular` / `LimiX-2` / `Causilo` / `Mitra-v2`** | Diverse pretraining corpora and structural tokenization priors; pool as raw zero-shot predictors inside Level-2 stacking. |
+
+> [!CAUTION]
+> **OOF Leakage Guardrail for In-Context TFMs**: Never pass out-of-fold predictions of other models as input features to full-context attention models (`TabPFN`, `TabICL`, etc.). Because in-context self-attention attends across support rows whose labels are visible, target-derived columns leak validation labels inside attention blocks. Feed only raw predictors and label-free features.

@@ -66,6 +66,8 @@ Refer to [`references/eda_data_forensics.md`](./references/eda_data_forensics.md
    Screen pairwise and three-way combinations via Chi-square contingency table divergence to isolate the highest-signal cross-features.
 7. **Synthetic Formula Discovery**:
    Fit an unregularized Linear Regression or OLS to recover additive linear formula offsets across discrete categories.
+8. **Cross-Fitted Field Reconstruction & Exact-Value Auditing**:
+   Check whether repeated continuous/integer values carry distinct latent rates and inspect column-to-column reconstruction residuals ($x_j - \hat{x}_j$) via cross-fitted Autoencoders/GBDTs or MLM density uncertainty (`mfill`, `qfill`). See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
 
 ---
 
@@ -93,6 +95,10 @@ Refer to detailed guides in [`references/feature_engineering.md`](./references/f
    Avoid stacking original dataset rows directly into training data (which hurts GBDTs due to distribution drift). Instead, build static target-mean lookup tables (`orig_rate__*`) from original data to inject pure prior signal without leakage.
 9. **BPE Subword Token Group Encodings on Numerical Strings**:
    Tokenize integer strings with GPT-2 BPE (`tiktoken`) to exploit synthesizer token-boundary artifacts. Target-encode token prefix/length categories.
+10. **Fold-Safe Semi-Supervised Exact-Value EM & Context-Shape Residuals**:
+    When discrete numeric keys repeat across `train + test`, pool labeled outer-train counts with unlabeled (`val + test`) rows weighted by a value-blind context teacher inside each fold (`w_unlab` $\in \{0.25, 1, 4\}$). See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
+11. **Multi-Resolution TE Regularization (`noise` + `feature_weights`)**:
+    When feeding dense multi-scale TE banks into GBDTs, inject zero-mean Gaussian noise (`sd = 0.04`) strictly onto training rows and pass differential column sampling `feature_weights` (`1.0` raw, `0.6` base TE, `0.2` multires, `0.05` diffs) to prevent tree split overfitting.
 
 ---
 
@@ -179,6 +185,14 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
     When meta-stacking 50+ prediction columns via Logistic Regression, default `tol=1e-4` stops prematurely on the flattened log-loss surface. Setting `tol=1e-8` and `max_iter=2000` is mandatory to avoid suboptimal weights. See [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
 19. **Shake-Up Defense: The Clark (1961) Final Hedging Law**:
     Under the exact expected value of the maximum of two correlated normals, a second submission correlated with your best at $\rho > 0.99$ is **statistically inert** against private shake-up. A valid hedge must simultaneously satisfy $\rho \le 0.98$ and distance $\Delta < 2.0\sigma$. See [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
+20. **Feature-Ablation Contrast Carriers (`real - zero` Chains & Cross-Family Contrasts)**:
+    When standard models correlate at $\rho > 0.99$, train matched-seed pairs (`real` vs `zero` feature block) and feed $z_{\text{next}} = z_{\text{base}} + \alpha(\bar{z}_{\text{real}} - \bar{z}_{\text{zero}})$ or cross-family contrasts into regularized linear stackers to expose pure marginal signal. See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
+21. **Label-Free Per-Fold Test-Distribution Logit Alignment**:
+    Before averaging $K$-fold logits or feeding them to a stacker, align each fold's OOF and Test logits using that fold's own unlabeled test mean and std (`scale * (z - mu_test) / sd_test`).
+
+### Track C: Imbalanced Multiclass & Balanced Accuracy
+1. **Ordinal + OvR Pairwise Rankers**: Train 1 ordinal ranker + $C$ One-vs-Rest pairwise `XGBRanker` models alongside calibrated multiclass GBDTs/NNs.
+2. **Class-Weighted GPU Multinomial Logit Stacker**: Stack all $(N, M, C)$ per-class logits with inverse-class-frequency sample weights and $L_2$ weight decay `1 / (C_reg * N)` in PyTorch on GPU. See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
 
 ---
 
@@ -193,7 +207,8 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 - [Riemannian Hypersphere Fréchet Ensembling & Boundary Rules](./references/riemannian_hypersphere_frechet_blend.md)
 - [AUC-Direct FFT Ensembling & Foundation Transformers](./references/auc_direct_fft_blend.md)
 - [Tabular LLMs, Generative Transformers & Foundation Models](./references/tabular_llms_generative_transformers.md)
-- [Autonomous Multi-LLM Competitive Workflow](../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
+- [Advanced Forensics, Contrast Carriers & Semi-Supervised EM](./references/advanced_forensics_contrasts_em.md)
+- [Autonomous Multi-LLM Competitive Workflow](../../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
 
 
 

@@ -73,7 +73,8 @@ Coding agents (e.g. Antigravity) automatically discover and activate skills loca
 - [AUC-Direct FFT Ensembling & Foundation Transformers](.agent/skills/kaggle-tabular-playbook/references/auc_direct_fft_blend.md): Pairwise ROC-AUC direct optimization via histogram FFT convolution (`scipy.signal.fftconvolve`), full-context TabPFN scaling, and surrogate LLR extraction.
 - [GLM / Linear Residual Base Margin Boosting](.agent/skills/kaggle-tabular-playbook/references/glm_residual_base_margin.md): Passing cross-fitted linear/GAM logits into `init_score`/`base_margin` so GBDTs learn pure non-linear residual interactions.
 - [Soft Pseudo-Label Distillation & Group-Wise Partitions](.agent/skills/kaggle-tabular-playbook/references/soft_pseudolabel_distillation.md): Continuous soft teacher probability distillation ($w=2$) and isolated subgroup model partitioning for residual decorrelation.
-- [Tabular LLMs, Generative Transformers & Foundation Models](.agent/skills/kaggle-tabular-playbook/references/tabular_llms_generative_transformers.md): Target-First ("Storyteller") & Target-Last ("Detective") GPT-2 on 60-epoch GReaT replicas, `AO-ARM`/`GenPure` from-scratch Bayes transformers, `Q-FT v2`/RTD encoders, Replica Worlds pretraining, and 9-model TFM zoo.
+- [Tabular LLMs, Generative Transformers & Foundation Models](.agent/skills/kaggle-tabular-playbook/references/tabular_llms_generative_transformers.md): Target-First ("Storyteller") & Target-Last ("Detective") GPT-2 on original-data replicas, from-scratch Any-Order Bayes transformers, self-supervised RTD encoders, Replica Worlds pretraining, and full-context TFM zoo.
+- [Advanced Forensics, Contrast Carriers & Semi-Supervised EM](.agent/skills/kaggle-tabular-playbook/references/advanced_forensics_contrasts_em.md): `real - zero` feature-ablation contrast carriers, fold-safe exact-value semi-supervised EM, multi-resolution TE `feature_weights` regularization, label-free test logit alignment, field reconstruction residuals, and GPU class-weighted multiclass logit stacking.
 
 
 #### Reinforcement Learning & Simulation Cookbooks
@@ -106,7 +107,8 @@ kaggle-skills/
 │       │       ├── soft_pseudolabel_distillation.md
 │       │       ├── riemannian_hypersphere_frechet_blend.md
 │       │       ├── auc_direct_fft_blend.md
-│       │       └── tabular_llms_generative_transformers.md
+│       │       ├── tabular_llms_generative_transformers.md
+│       │       └── advanced_forensics_contrasts_em.md
 │       ├── kaggle-rl-simulation/
 │       │   ├── SKILL.md
 │       │   └── references/
