@@ -11,10 +11,10 @@ This skill provides a structured, high-performance workflow for competing in Kag
 ## Table of Contents
 1. [Core Philosophy & Phased Strategy](#1-core-philosophy--phased-strategy)
 2. [Phase 1: Setup & Leak-Free Cross-Validation](#2-phase-1-setup--leak-free-cross-validation)
-3. [Phase 2: Exploratory Data Analysis & Synthetic Formula Discovery](#3-phase-2-exploratory-data-analysis--synthetic-formula-discovery)
+3. [Phase 2: Exploratory Data Forensics (DS & DA Playbook)](#3-phase-2-exploratory-data-forensics-ds--da-playbook)
 4. [Phase 3: Advanced Feature Engineering Recipes](#4-phase-3-advanced-feature-engineering-recipes)
 5. [Phase 4: Multi-Model Zoo Execution](#5-phase-4-multi-model-zoo-execution)
-6. [Phase 5: Centered Isotonic Calibration & Ridge Stacking](#6-phase-5-centered-isotonic-calibration--ridge-stacking)
+6. [Phase 5: Ensembling & Meta-Stacking Playbook](#6-phase-5-ensembling--meta-stacking-playbook)
 7. [References & Deep Dives](#7-references--deep-dives)
 
 ---
@@ -191,12 +191,14 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
     Before averaging $K$-fold logits or feeding them to a stacker, align each fold's OOF and Test logits using that fold's own unlabeled test mean and std (`scale * (z - mu_test) / sd_test`).
 
 ### Track C: Imbalanced Multiclass & Balanced Accuracy
-1. **Ordinal + OvR Pairwise Rankers**: Train 1 ordinal ranker + $C$ One-vs-Rest pairwise `XGBRanker` models alongside calibrated multiclass GBDTs/NNs.
-2. **Class-Weighted GPU Multinomial Logit Stacker**: Stack all $(N, M, C)$ per-class logits with inverse-class-frequency sample weights and $L_2$ weight decay `1 / (C_reg * N)` in PyTorch on GPU. See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
+1. **Balanced-Accuracy Mathematical Duality (Never Double-Correct!)**: Class-weighted log-loss ($w_c = 1/(K\cdot\pi_c)$) and unweighted calibrated probabilities divided by priors (`argmax(p / π_c)`) share the exact Bayes rule. Combine weighted GBDTs + prior-divided NNs, **never apply both to the same model** (`-0.04` to `-0.06` drop!), and strip base PP before meta-stacking.
+2. **Ordinal + OvR Pairwise Rankers & Hierarchical Binary Cascades**: Pair ordinal/OvR `XGBRanker` and 2-stage hierarchical cascades (`Low vs Rest → Med vs High` when extremes never confuse) with a **Class-Weighted GPU Multinomial Logit Stacker**.
+3. **Specialized Tabular Regimes**: See [`references/specialized_tabular_regimes.md`](./references/specialized_tabular_regimes.md) for **split-half exact-value diagnostics & `float32` vocab safety**, **target-free Masked Density Transformer distributional imputation**, **factorized two-task survival modeling (`P(event)` + `E[rank(-t)|event=1]`)**, **pairwise matchup symmetry & graph ratings**, **dirty external-data 5-step pipelines & dense→sparse chaining**, and **heavy-tail `k*` validation**.
 
 ---
 
 ## 7. References & Deep Dives
+- [Specialized Tabular Regimes (Balanced Acc, Imputation, Survival, Matchups, External Data & `k*`)](./references/specialized_tabular_regimes.md)
 - [GLM / Linear Residual Base Margin Boosting](./references/glm_residual_base_margin.md)
 - [Soft Pseudo-Label Distillation & Group-Wise Partitions](./references/soft_pseudolabel_distillation.md)
 - [Exploratory Data Forensics (DS & DA Playbook)](./references/eda_data_forensics.md)

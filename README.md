@@ -5,143 +5,47 @@
 [![RAPIDS cuDF & cuML](https://img.shields.io/badge/RAPIDS-GPU%20Accelerated-76B900.svg)](https://rapids.ai/)
 [![Kaggle Grandmaster Playbook](https://img.shields.io/badge/Playbook-KGMON%202026-gold.svg)](https://developer.nvidia.com/blog/the-kaggle-grandmasters-playbook-7-battle-tested-modeling-techniques-for-tabular-data/)
 
-A curated repository of competitive machine learning knowledge distilled directly from winning solutions, post-mortems, and gold-medal architectures.
+A curated repository of competitive machine learning knowledge distilled from winning Kaggle solutions, post-mortems, and gold-medal architectures.
 
-This repository serves two interconnected purposes:
-1. **Human Knowledge Base (`Handbook/`)**: Deep-dive post-mortems detailing data dynamics, feature discovery, model architectures, validation discipline, and post-processing tricks.
-2. **AI Agent Skills (`.agent/skills/`)**: Modular, actionable runbooks formatted according to Antigravity's native skill specification (`SKILL.md`) so coding agents can automatically discover and execute elite competitive workflows.
-
----
-
-## 📊 Competition Index by Track
-
-### Tabular Competitions
-
-| Competition | Target & Metric | Key Breakthroughs & Winning Techniques | 1st Place CV / LB | Handbook Link |
-| :--- | :--- | :--- | :--- | :--- |
-| **Playground Series S6E1: Student Test Scores** | Continuous `exam_score` (RMSE) | • Reverse-engineered synthetic data generator formula<br>• Modulo digit decomposition ($10^k \pmod{10}$)<br>• Harmonic periodic trigonometric features ($p=12, 14, 20$)<br>• Out-of-fold multi-agg Target Encoding with Empirical Bayes smoothing<br>• PyTabKit RealMLP tabular neural nets + GBDT zoo<br>• Centered Isotonic Regression (CIR) calibration + Ridge Stacking | CV: 8.56634<br>LB: 8.57273 | [Deep Dive](Handbook/tabular/playground-s6e1-exam-score.md) |
-| **Playground Series S6E2: Predicting Heart Disease** | Binary `Heart Disease` (ROC-AUC) | • Multi-scale quantile (`qcut`), uniform (`cut`), and domain rounding binning<br>• Decimal digit decomposition ($10^i \pmod{10}$ and decimals)<br>• RealMLP (`pytabkit`) tabular neural net with PLR embeddings & Mish<br>• Disciplined ensemble selection via Optuna over ~150 OOF models<br>• Robust Ridge meta-learner on model probabilities<br>• Trusting the CV-LB relation ($0.95578$ threshold prevention of split-overfitting) | CV: 0.95578 – 0.95580<br>Single RealMLP: 0.95574<br>🥇 1st Place | [Deep Dive](Handbook/tabular/playground-s6e2-heart-disease.md) |
-| **Playground Series S6E3: Predicting Customer Churn** | Binary `Churn` (ROC-AUC) | • Snap feature mapping to 7k original IBM dataset & perturbation noise<br>• Mantissa decimal extraction, fractional residuals & Benford's Law<br>• Radix continuous-categorical split encoding<br>• 154-model ensemble (100 open-sourced in `s6e3_customer_churn`) selected via GPU hill climbing from 850 candidates<br>• 25 DL architectures (RealMLP, TabM, TabICL, GraphSAGE GNN, PyMC survival)<br>• 4-level stack with fold-wise rank calibration & cuML $L_2$ Logistic Regression | CV: 0.919857<br>Private: **0.91856** (`0.91853` repo)<br>🥇 1st Place | [Deep Dive](Handbook/tabular/playground-s6e3-customer-churn.md) |
-| **Playground Series S6E5: Predicting F1 Pit Stops** | Binary `PitNextLap` (ROC-AUC) | • Autonomous Codex GPT-5.5 YOLO scaling: 219 models across 34 classes (100 open-sourced in `s6e5_f1_pit_stops`)<br>• Reconstructed total scheduled race laps (`LapNumber / RaceProgress`) and degradation pace<br>• RealMLP champion single model (CV 0.954426) + multi-head TabM & 1,478-col hazard XGBoost + 11 TALENT NNs<br>• Adversarial Driver-drift mitigation via parallel Driver-dropped model stream<br>• Synchronous fold-aligned original data augmentation (sample weights 0.5–1.25)<br>• Consensus blending: AutoGluon + 186-OOF Logit Stacker with percentile rank averaging | Public: 0.95488<br>Private: **0.95503**<br>🥇 1st (`@optimistix`) / 🥈 2nd (`@cdeotte` 0.95502; 0.95503 repo) | [Deep Dive](Handbook/tabular/playground-s6e5-f1-pit-stops.md) |
-| **Playground Series S6E9: Predicting EV Adoption (Will_Buy_EV)** | Binary `Will_Buy_EV` (ROC-AUC) | • 3-leg Multi-Agent Relay (60-model `cuML` LR stack): Target-First GPT-2 on GReaT replicas (`0.946485`), Income EM (`0.946574`), BPE pieces (`0.946462`)<br>• Full-context TabPFN-3.5 scaling (428k–668k rows, +18.6u per doubling, OOF 0.946485) & `distilgpt2` LLR features<br>• AUC-direct level-3 ensembling via histogram FFT convolution (`scipy.signal.fftconvolve`) & Riemannian $\mathbb{S}^{N-1}$ Fréchet Barycenter + `lexrank`<br>• 4 Deterministic generator boundary invariants (3,733 rows) & Continuous residual margin boosting (`init_score`/`base_margin`)<br>• Soft Pseudo-Label Distillation ($w=2$), 4-level TE Pyramids, & The Overfitting Law ($\Delta\text{Priv} \approx 16.7\text{u} - 0.88\Delta\text{Pub}$, $r=-0.97$) | 🥇 1st: **0.94602** (Deotte)<br>🥈 2nd: 0.94588 (Alicia)<br>🥉 3rd: 0.94584 (M & M) | [Deep Dive](Handbook/tabular/playground-s6e9-will-buy-ev.md) |
-| **Playground Series S6E10: Predicting Airline Satisfaction** | Binary `satisfaction` (ROC-AUC) | • Target-First ("Storyteller") & Target-Anywhere GPT-2 fine-tuned on 60-epoch GReaT replicas (`0.96245` OOF, ~80% stack weight)<br>• From-scratch Any-Order / Bagged Generative Transformers (`AO-ARM` `0.96217` CV; `GenPure` 16×36ep seeds `0.96119` OOF)<br>• Self-supervised Masked/RTD feature-token transformers (`Q-FT v2`, ModernBERT, Differential Attention, `d1024` 2,000ep)<br>• Full-context zero-shot TFM zoo (`TabPFN-3.5`, `Kumo`, `TabFM`, `EXAONE`, `LimiX-2`, `Causilo`, `TabICLv2`, `Mitra-v2`) & Replica Worlds (`M32_1M`)<br>• `Flight Distance` route IDs + zero-rating bypass anomaly (monotone constraints lose `-0.0031` AUC) | 🥇 1st: **0.96318** (Deotte; 0.96314 repo)<br>🏅 4th: 0.96304 (Ole-Jakob)<br>🏅 7th: 0.96263 (+396) | [Deep Dive](Handbook/tabular/playground-s6e10-airline-satisfaction.md) |
-
-
-
-### 🚀 Reinforcement Learning & Simulation Competitions
-
-Start with [A head start in the next simulation competition](Handbook/reinforcement-learning/simulation-competition-starter.md): transferable lessons, runnable baseline/evaluation milestones and a reusable agent kickoff prompt.
-
-| Competition | Target & Environment | Key Breakthroughs & Winning Techniques | Outcome / Scale | Handbook Link |
-| :--- | :--- | :--- | :--- | :--- |
-| **Kaggriculture** | Two-player fixed-season farming with shared dynamic prices | • **1st (MMPQ)**: 10.2M Transformer, within-farm 2D RoPE, 50d opponent inventory estimator, LNS+DP solver, alternating BC $\leftrightarrow$ PPO + PPO-masked action corrections (`61.1%` vs 2nd)<br>• **2nd (vmerckle)**: 37M HourFormer in **30× RTX 5090 hrs (~$10)**, 22k-game BC + 25% lost-game PPO + Wheat Trading Clutch (`9% -> 39%` vs MMPQ)<br>• **3rd–28th Archetypes**: Executed-state labels (+20 wins/24), Macro-BC + C++ Day Compiler, Hybrid BC opening + Rust planner, Rust 29.8k g/s engine | 🥇 **1st** (MMPQ, 9.04M games)<br>🥈 **2nd** (`vmerckle`, 30h)<br>🥉 **3rd** (DSM) · 🏅 **4th** (Farmcore)<br>10,148 teams | [Deep Dive](Handbook/reinforcement-learning/kaggriculture.md) |
-| **Kaggle Orbit Wars** | Multi-Agent 2D Orbital Space Conquest (2-Player & 4-Player) | • Sutton's Bitter Lesson: 200M-parameter Transformer trained for 15B steps<br>• Single-pass multi-player forward pass (evaluates all players in 1 pass, 2-4x speedup)<br>• High-performance Rust simulator (PyO3 + Rayon) reaching 120,000+ steps/sec with zero-copy pinned buffers<br>• Sub-100MiB submission packing via 4-bit NormalFloat (NF4-LSQ) group quantization (90.7MiB)<br>• Multi-tier serving cascade: dynamic int8 CPU inference + automatic 5M fallback when overage < 1.0s | 🥇 **1st Place Gold**<br>15 Billion Steps<br>32× B200 GPUs | [Deep Dive](Handbook/reinforcement-learning/orbit-wars.md) |
-| **Kaggle Maze Crawler** | 2-Player Partially Observable Infinite Scrolling Maze RTS | • Heuristic Supremacy vs. Deep RL: 1st place scored BFS vs 3rd place PPO self-play<br>• Jump-aware BFS movement with arrival-time Steps-Before-Death (`sbd`) score steering<br>• One-shot economy latch (`ENERGY_CAP = 3000`): stop farming, shift 100% to hunting<br>• Active combat win condition: 300-energy Miner drop behind advance (`dist=5`) + lookahead survival<br>• The Homogeneous Self-Play Trap: why pure self-play RL created an energy-farming blind spot | 🥇 **1st Place Gold** (Heuristic)<br>🥉 **3rd Place Bronze** (Deep RL)<br>1v1 RTS Simulation | [Deep Dive](Handbook/reinforcement-learning/maze-crawler.md) |
-| **Pokémon TCG AI Battle Playground** | 2-Player Pokémon Card Game (Best-of-Three `cabt` Environment) | • Token-Transformer policy over hand, bench, active, and option tokens<br>• The Legendary "Seat Bug" Fix: Turn physical seat index into turn-order indicator (+168 Elo, 15.7% → 86.8% win rate)<br>• Deterministic First-Turn Advantage (+18 to +23 win rate points in mirrors)<br>• Bo3 Round-Boundary Tracker Reset & 1,431 Card PCA latent expansion<br>• Zero-forfeit runtime guardrails: Rejection vs re-presentation detection & 30s clock panic valve | 🥉 **3rd Place Ladder** (LB 1132.4)<br>60-Card Meta Deck (Hydrapple / Ogerpon ex)<br>Full Source & Submission Bundle | [Deep Dive](Handbook/reinforcement-learning/pokemon-tcg-playground.md) |
+- **Human Knowledge Base ([`Handbook/`](Handbook/README.md))**: Deep-dive competition post-mortems covering data forensics, architectures, CV discipline, ensembling, and anti-patterns.
+- **Universal AI Agent Skills ([`.agent/skills/`](.agent/skills/))**: Auto-discovered Antigravity runbooks (`SKILL.md` + `references/`) containing **strictly transferable, cross-competition techniques** (competition-specific hacks stay in `Handbook/`).
+- **Full Detailed Catalog ([`DETAILS.md`](DETAILS.md))**: Per-competition breakthrough tables, full cookbook index, and complete repository tree.
 
 ---
 
-## 🤖 Autonomous AI & Multi-LLM Workflows
+## 📊 Coverage by Track
 
-Specialized architectural runbooks for orchestrating multi-LLM teams and autonomous coding agents to execute end-to-end competitive campaigns:
-
-| Workflow Runbook | Agent Roles & Ecosystem | Core Methodology & Scope | Link |
-| :--- | :--- | :--- | :--- |
-| **Autonomous Multi-LLM Competitive Playbook** | GPT-5.4, Gemini 3.1, Claude Opus 4.6 (4× A100 GPU RAPIDS cluster) | • KGMON 7-Phase Playbook: Automated EDA, 850-model scaling, 600k lines of code<br>• Synthetic data generator reverse-engineering (snap & digit forensics)<br>• GPU forward hill-climbing model selection & 4-level deep stacking<br>• Programmatic guardrails against data leakage and numerical instability | [Guide](Handbook/workflows/llm-agentic-kaggle-workflow.md) |
+| Track | Entries | Core Scope | Catalog |
+| :--- | :---: | :--- | :--- |
+| **Tabular** | 14 | Forensics, FE, GBDTs, Tabular NNs, Tabular LLMs/TFMs, stacking & calibration | [Details](DETAILS.md#tabular-competitions) |
+| **RL & Simulation** | 4 + Starter | BC/PPO, executed-action labels, fast Rust/JAX engines, search & serving | [Details](DETAILS.md#reinforcement-learning--simulation-competitions) |
+| **Computer Vision** | 7 | Image regression, detection, segmentation, 3D medical/volumetric & foundation backbones | [Details](DETAILS.md#computer-vision-competitions) |
+| **NLP & LLMs** | 7 | Reasoning, post-training, low-resource MT, TTT, reranking, extraction & reward modeling | [Details](DETAILS.md#nlp--llm-reasoning-competitions) |
+| **Time Series** | 6 | Temporal CV, kinematics, streaming finance, wearable sensors & pose-action segmentation | [Details](DETAILS.md#time-series--forecasting-competitions) |
+| **Multimodal & Audio** | 5 | Bioacoustics/SED, protein DAGs, RNA 3D folding, ECG digitization & inverse physics | [Details](DETAILS.md#multimodal-audio--science-competitions) |
+| **Optimization & Compression** | 2 | Combinatorial packing, GPU/SIMD relaxation, LNS, ONNX circuits & multi-LLM factories | [Details](DETAILS.md#optimization--compression-competitions) |
+| **Autonomous Workflows** | 1 | Multi-LLM competitive engineering & guardrails | [Guide](Handbook/workflows/llm-agentic-kaggle-workflow.md) |
 
 ---
 
-## 🛠️ Agent Skills Architecture
+## 🛠️ Agent Skills
 
-Coding agents (e.g. Antigravity) automatically discover and activate skills located inside `.agent/skills/`:
+Coding agents automatically discover skills inside `.agent/skills/`. Every skill enforces a **universal-only bar**: techniques must generalize across competitions in their track, not overfit a single dataset.
 
-| Skill Name | Purpose | Location |
+| Skill | Scope | Entrypoint |
 | :--- | :--- | :--- |
-| **`kaggle-tabular-playbook`** | Complete end-to-end tabular competition runbook (EDA, formula discovery, Snap features, Radix encoding, OOF Target Encoding, RealMLP, GBDTs, CIR calibration, Logit Stacking & Hill Climbing) | [`.agent/skills/kaggle-tabular-playbook/SKILL.md`](.agent/skills/kaggle-tabular-playbook/SKILL.md) |
-| **`kaggle-rl-simulation`** | New-game kickoff, heuristic/search/BC/RL selection, replay and probability correctness, evaluation, profiling and submission checks | [`.agent/skills/kaggle-rl-simulation/SKILL.md`](.agent/skills/kaggle-rl-simulation/SKILL.md) |
-| **`kaggle-competition-distiller`** | Reusable agent workflow to intake raw competition files/notebooks, reverse-engineer winning recipes, and produce Handbook entries + Agent Skills | [`.agent/skills/kaggle-competition-distiller/SKILL.md`](.agent/skills/kaggle-competition-distiller/SKILL.md) |
+| **`kaggle-tabular-playbook`** | End-to-end tabular workflow: forensics, FE, OOF TE, GBDT/NN/LLM/TFM zoo, survival/matchups, calibration & stacking | [`SKILL.md`](.agent/skills/kaggle-tabular-playbook/SKILL.md) |
+| **`kaggle-rl-simulation`** | Simulation kickoff, heuristic/search/BC/RL selection, parity, evaluation & submission serving | [`SKILL.md`](.agent/skills/kaggle-rl-simulation/SKILL.md) |
+| **`kaggle-cv-playbook`** | Dense foundation backbones (`DINOv3`), TTT/SSA, 2D/2.5D MIL vs 3D vessel `nnU-Net`, 3D+T tracking, topology & 3D keypoints | [`SKILL.md`](.agent/skills/kaggle-cv-playbook/SKILL.md) |
+| **`kaggle-llm-reasoning-playbook`** | FP8 vLLM/TIR serving, Trainable-Trace SFT, online TTT/DML, pairwise reward cascades, low-resource `ByT5` MT & extraction | [`SKILL.md`](.agent/skills/kaggle-llm-reasoning-playbook/SKILL.md) |
+| **`kaggle-time-series-playbook`** | Temporal/gap CV, ST encoders, streaming financial online learning, risk targeting, wearable IMU fusion & pose segmentation | [`SKILL.md`](.agent/skills/kaggle-time-series-playbook/SKILL.md) |
+| **`kaggle-audio-signal-playbook`** | Cosine embedding distillation, zero-KD diversity, label-sum-capped soft PL, rank blending & shared-mel OpenVINO CPU serving | [`SKILL.md`](.agent/skills/kaggle-audio-signal-playbook/SKILL.md) |
+| **`kaggle-scientific-optimization-playbook`** | Forward-operator PDE inversion, ECG signal digitization, DAG stacking, Best-of-K 3D portfolios, GPU/SIMD packing & MCKP agent factories | [`SKILL.md`](.agent/skills/kaggle-scientific-optimization-playbook/SKILL.md) |
+| **`kaggle-competition-distiller`** | SOP for distilling winning Kaggle writeups into `Handbook/` entries and strictly universal skills | [`SKILL.md`](.agent/skills/kaggle-competition-distiller/SKILL.md) |
 
-### Skill Cookbooks & References
-
-#### Tabular Competitive Cookbooks
-- [Exploratory Data Forensics (DS & DA Playbook)](.agent/skills/kaggle-tabular-playbook/references/eda_data_forensics.md): Adversarial validation, generator reverse-engineering, Wilson CI bivariate profiling, mantissa dissection, domain residual audits, and Chi-square interaction screening.
-- [Feature Engineering Toolkit](.agent/skills/kaggle-tabular-playbook/references/feature_engineering.md): Snap mapping, Radix interactions, modulo digit extraction, cKDTree priors, Benford's Law anomaly detection.
-- [Leak-Free Multi-Agg Target Encoding](.agent/skills/kaggle-tabular-playbook/references/oof_target_encoding.md): Nested 5×5 fold-safe empirical Bayes target encoding across 10 statistical aggregations.
-- [Ensembling, Calibration & Hill Climbing](.agent/skills/kaggle-tabular-playbook/references/stacking_cir_ridge.md): Centered Isotonic Regression (CIR), Ridge regression, fold-wise ordinal rank calibration, and greedy forward selection.
-- [Logit Stacking & Rank Blending](.agent/skills/kaggle-tabular-playbook/references/logit_stacking_rank_blend.md): Logit transformation with regularized Logistic Regression, cross-ensembler percentile rank blending, synchronous multi-dataset fold protocol, and adversarial drift ablation.
-- [Riemannian Hypersphere Fréchet Ensembling & Boundary Rules](.agent/skills/kaggle-tabular-playbook/references/riemannian_hypersphere_frechet_blend.md): Geodesic Fréchet barycenter ensembling on $\mathbb{S}^{N-1}$, deterministic generator boundary invariant mining, and zero-tie lexicographical sorting (`lexrank`).
-- [AUC-Direct FFT Ensembling & Foundation Transformers](.agent/skills/kaggle-tabular-playbook/references/auc_direct_fft_blend.md): Pairwise ROC-AUC direct optimization via histogram FFT convolution (`scipy.signal.fftconvolve`), full-context TabPFN scaling, and surrogate LLR extraction.
-- [GLM / Linear Residual Base Margin Boosting](.agent/skills/kaggle-tabular-playbook/references/glm_residual_base_margin.md): Passing cross-fitted linear/GAM logits into `init_score`/`base_margin` so GBDTs learn pure non-linear residual interactions.
-- [Soft Pseudo-Label Distillation & Group-Wise Partitions](.agent/skills/kaggle-tabular-playbook/references/soft_pseudolabel_distillation.md): Continuous soft teacher probability distillation ($w=2$) and isolated subgroup model partitioning for residual decorrelation.
-- [Tabular LLMs, Generative Transformers & Foundation Models](.agent/skills/kaggle-tabular-playbook/references/tabular_llms_generative_transformers.md): Target-First ("Storyteller") & Target-Last ("Detective") GPT-2 on original-data replicas, from-scratch Any-Order Bayes transformers, self-supervised RTD encoders, Replica Worlds pretraining, and full-context TFM zoo.
-- [Advanced Forensics, Contrast Carriers & Semi-Supervised EM](.agent/skills/kaggle-tabular-playbook/references/advanced_forensics_contrasts_em.md): `real - zero` feature-ablation contrast carriers, fold-safe exact-value semi-supervised EM, multi-resolution TE `feature_weights` regularization, label-free test logit alignment, field reconstruction residuals, and GPU class-weighted multiclass logit stacking.
-
-
-#### Reinforcement Learning & Simulation Cookbooks
-- [New Simulation Competition Starter](Handbook/reinforcement-learning/simulation-competition-starter.md): General workflow, transferable lessons, resource-aware algorithm choices and a ready-to-adapt kickoff prompt.
-- [Kaggriculture: Tapes to BC and Rule-Aware PPO](.agent/skills/kaggle-rl-simulation/references/kaggriculture.md): Episode-based replay splits, executed-action labels, sequential resource masks, critic fitting, targeted teacher refinement and compute-aware reproduction.
-- [Simulator Acceleration & Parity Verification](.agent/skills/kaggle-rl-simulation/references/simulator_acceleration.md): High-throughput Rust (PyO3 + Rayon) vector engines, zero-copy pinned tensors, AABB collision broad-phase filtering, and tournament replay parity harnesses.
-- [Neural Policy & Value Architectures](.agent/skills/kaggle-rl-simulation/references/model_architectures.md): Variable-entity transformers, shared global scratch tokens, single-pass multi-player joint inference, and truncated logistic mixture action heads.
-- [RL Training Stability & League Play](.agent/skills/kaggle-rl-simulation/references/rl_training_stability.md): Example PPO, teacher and league recipes with game-specific reward, discount and promotion choices.
-- [Submission Quantization & CPU Serving](.agent/skills/kaggle-rl-simulation/references/submission_quantization_serving.md): Sub-100MiB checkpoint packing via 4-bit NormalFloat (NF4-LSQ) group quantization, dynamic int8 CPU inference, and 1s overage fallback cascades.
-
----
-
-## 📁 Repository Structure
-
-```text
-kaggle-skills/
-├── README.md                                 # Master repository catalog (this file)
-├── .gitignore                                # Ignores local large competition data
-├── .agent/
-│   └── skills/                               # Native Antigravity auto-discovered skills
-│       ├── kaggle-tabular-playbook/
-│       │   ├── SKILL.md
-│       │   └── references/
-│       │       ├── eda_data_forensics.md
-│       │       ├── feature_engineering.md
-│       │       ├── oof_target_encoding.md
-│       │       ├── stacking_cir_ridge.md
-│       │       ├── logit_stacking_rank_blend.md
-│       │       ├── glm_residual_base_margin.md
-│       │       ├── soft_pseudolabel_distillation.md
-│       │       ├── riemannian_hypersphere_frechet_blend.md
-│       │       ├── auc_direct_fft_blend.md
-│       │       ├── tabular_llms_generative_transformers.md
-│       │       └── advanced_forensics_contrasts_em.md
-│       ├── kaggle-rl-simulation/
-│       │   ├── SKILL.md
-│       │   └── references/
-│       │       ├── simulator_acceleration.md
-│       │       ├── model_architectures.md
-│       │       ├── rl_training_stability.md
-│       │       ├── kaggriculture.md
-│       │       └── submission_quantization_serving.md
-│       └── kaggle-competition-distiller/
-│           └── SKILL.md
-└── Handbook/
-    ├── README.md                             # Master track index & taxonomy
-    ├── workflows/                            # Autonomous multi-LLM engineering guides
-    │   └── llm-agentic-kaggle-workflow.md
-    ├── tabular/                              # Tabular competition post-mortems
-    │   ├── playground-s6e1-exam-score.md
-    │   ├── playground-s6e2-heart-disease.md
-    │   ├── playground-s6e3-customer-churn.md
-    │   ├── playground-s6e5-f1-pit-stops.md
-    │   ├── playground-s6e9-will-buy-ev.md
-    │   └── playground-s6e10-airline-satisfaction.md
-    └── reinforcement-learning/               # Multi-agent RL & simulation challenges
-        ├── simulation-competition-starter.md  # New-game workflow and agent kickoff prompt
-        ├── kaggriculture.md                  # 1st–28th Place solutions, BC/PPO, masks & solvers
-        ├── orbit-wars.md
-        ├── maze-crawler.md
-        └── pokemon-tcg-playground.md
-```
-
-*(Note: Raw multi-gigabyte competition files, datasets, and local checkpoints in `Competition/` are excluded via `.gitignore`.)*
+See [`DETAILS.md`](DETAILS.md#skill-cookbooks--references) for the complete list of cookbook references inside each skill, and [`Handbook/README.md`](Handbook/README.md) for entry templates and track taxonomy.
 
 ---
 
 ## 📄 License
-MIT License. Feel free to use, adapt, and build upon these skills and handbook entries for your own Kaggle competitions and AI agent systems!
-
+MIT License. Feel free to use, adapt, and build upon these skills and handbook entries for your own Kaggle competitions and AI agent systems.
