@@ -74,3 +74,14 @@ For compound visual correspondence, re-identification, or copy-move forensics wh
    - On low-contrast textures (medical/microscopy/blots), upscale small regions (`2×–4×`) and lower SIFT `contrast_threshold` (`0.001` vs default `0.04`), or use learned `ALIKED` / `SuperPoint` + `LightGlue` (**disable LightGlue early stopping** on sparse matches).
    - Always test **mirror/flip hypotheses** if mirrored duplication is plausible.
 4. **Geometric Verification & Mask Refinement**: Verify matches with Affine/Homography **RANSAC / MAGSAC++** (`min_inliers` & `min_inlier_ratio`, rejecting impossible scale/shear matrices), merge clusters with matching affine transforms via Union-Find, and refine masks via bidirectional reprojection error (`<= mean + 2σ`).
+
+---
+
+## 5. Multi-Scene 3D SfM, Foundation Matching & Quadratic GPU Balancing
+
+When reconstructing camera poses `(R, t)` from unstructured flat collections mixing multiple visually similar scenes and distractors:
+
+1. **Hybrid 3D-Foundation + High-Resolution Sparse Keypoints**: Pair 3D-foundation matchers (`MASt3R`) with high-resolution sparse keypoint detectors (`ALIKED`/`SuperPoint`/`RDD`) matched through the foundation local feature head—combining 3D geometric symmetry/rotation robustness with sub-pixel keypoint accuracy.
+2. **Multi-Retriever Shortlisting & Cycle Consistency**: Combine orthogonal global retrievers (`ASMK + SPoC + DINOv2 + ISC`), re-match high-res ROI crops / 5-tile quadrants on wide-baseline pairs, and drop pairs failing 3-view **cycle/loop-closure consistency** (`>30 px` error).
+3. **Let Incremental Multi-Model SfM Split Clusters**: When match precision is high, skip fragile early pre-clustering (`Louvain` / farthest-point clustering) and let incremental multi-model **`pycolmap`** (wrapped in **retryable subprocesses** for segfault/OOM resilience) separate scenes and reject outliers; avoid global `GLOMAP` or unsupervised test-time matcher TTT on mixed multi-scene collections (amplifies cross-scene false bridges).
+4. **Quadratic Multi-GPU Workload Sharding**: Pairwise matching scales as $\mathcal{O}(n_i^2)$ per scene—partition datasets across multiple GPUs by balancing **$\sum n_i^2$** rather than image count $\sum n_i$ to eliminate straggler idle time.

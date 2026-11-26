@@ -66,3 +66,20 @@ For discriminative classification, moderation, or multi-choice reranking (`ROC-A
    - Under entity+type tuple F1, a **type error on a TP costs 2× a retrieval error** (1 FP + 1 FN).
    - **Structured Metadata GBDT > 32B LLM**: Whenever structured external metadata (authors, dates, titles, counts) exists, an article-grouped CatBoost beats 32B LLMs in minutes; reserve constrained `A`/`B` LLMs for unstructured text snippets (abstract + mention window + Data Availability + table captions/headers or top-3 BM25 chunks).
    - **Annotator View Parity**: Audit whether annotators read PDF or XML (exclude XML-only online tables if annotators read PDFs!), stabilize tiny noisy encoders via **target-entity masking + `bs=256` + EMA (`0.9995`)**, and avoid hard-coding Public-LB repository heuristics that collapse on Private split shifts.
+
+---
+
+## 5. Synthesis Amortization, Asymmetric Code Abstention & Quantized Runtime Parity
+
+1. **Offline Synthesis Amortization, Vocab Shrinking & Single-Task LoRA TTT**:
+   - When test-time compute cannot host giant reasoning teachers directly, **amortize frontier reasoning offline** by synthesizing `10k–100k+` programmatically verified tasks (plus inverse/augmentation transforms) to pre-train a compact `1B–8B` student.
+   - **Task-Alphabet Vocabulary Shrinking**: On closed-symbol structured tasks (grids, coordinates, finite alphabets), prune the `lm_head` and input embeddings down to the exact active token set (`~16–256` tokens) — slashes VRAM, unlocks high-throughput batched decoding, and stabilizes small-data gradients.
+   - **Per-Task Online LoRA TTT + Deterministic Search**: Fine-tune a fresh lightweight LoRA per unseen test task using dihedral/permutation augmentations of its few-shot examples, then decode via **batched best-first / DFS log-probability search** (filtering/ranking candidates with exact program or structural verifiers) instead of unguided temperature sampling.
+2. **Asymmetric-Penalty Code Repair & Learned Abstention**:
+   - Whenever an evaluation metric penalizes a wrong submission far more severely than abstaining (e.g., `(+1, -1, 0)` pass/fail/skip scoring), **abstention calibration beats raw solve rate**.
+   - **Verification-First Patching**: Structure agent pipelines around (a) localization → (b) fail-to-pass (F2P) reproduction test → (c) pass-to-pass (P2P) regression baseline → (d) structured **`*SEARCH/REPLACE*`** edits (far higher syntactic validity than raw unified `git diff` hunks).
+   - **Calibrated Skip Gate**: Train a lightweight classifier (or LoRA difficulty/verification scorer) on out-of-fold patch execution traces, localization agreement, and unit-test coverage to submit **only** when expected utility `E[score] > 0`.
+3. **Quantized Runtime Parity & Full-Trajectory Agentic Optimization**:
+   - **Exact Target-Runtime Parity**: When evaluation executes against a quantized inference engine (e.g., GGUF / `llama.cpp` / INT4) or stateful tool harness, reproduce the **exact runtime build, quantization format, chat template, and tool-execution loop** locally — float16/BF16 surrogate scores frequently fail to transfer across quantization boundaries.
+   - **Bridge BF16 Optimization → Quantized Targets via Surrogate Reranking**: Generate diverse candidate prompts/triggers with continuous or discrete gradient search (`GCG` / coordinate ascent) on BF16 weights, then **rerank/filter through a fast regression surrogate (e.g., Ridge) trained directly on quantized runtime responses** and verify top candidates end-to-end against live environment state.
+   - **Full-Trajectory Loss & Probe Diversity**: Optimize jointly over both the **tool-invocation tokens** and **post-tool follow-up trajectory tokens** (`L_call + L_post_tool`); prefer **diverse single-hop probes** over brittle long multi-hop payload packing, which degrades sharply on unseen private templates and hidden system prompts.

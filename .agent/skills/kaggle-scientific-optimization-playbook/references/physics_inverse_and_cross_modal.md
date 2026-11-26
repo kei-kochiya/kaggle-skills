@@ -75,3 +75,16 @@ y_final = M(x_cur)
 - **Minimal Soft Biophysical Residual**: Inject `[N, N]` secondary-structure / contact probabilities into pretrained Pairformer `z_init` via a single `nn.Linear(1, d_pair, bias=False)` — outperforms complex multi-block embedders or binned one-hots.
 - **Long-Sequence Kabsch Chunking**: Deduplicate homomeric copies, chunk long chains (`448–512` tokens, `64–128` overlap), and stitch via **Kabsch SVD** + narrow linear (`±6`) or $C^2$-quintic smoothstep (`6t⁵ - 15t⁴ + 10t³`) overlap blending.
 - **Ablation Hygiene**: Disable stochastic attention/MC dropout during local CV ablations so `±0.02–0.03` diffusion variance cannot mask real improvements.
+
+---
+
+## 4. Calibrated Uncertainty Under GLL & Differentiable Metric Surrogates
+
+1. **Gaussian Log-Likelihood (GLL) Uncertainty Hygiene**:
+   - **Mandatory `MIN_SIGMA` Floor + Boundary Fallback**: A single collapsed $\sigma \to 0$ on a grazing/partial/OOD sample explodes $(y - \mu)^2 / \sigma^2$ and wipes out global GLL. Always enforce explicit lower clips and geometry/fit-residual inflation fallbacks.
+   - **Separate $\mu$ Fitting From Out-of-Fold $\sigma$ Calibration**: Combine epistemic spread (posterior samples / bootstrap / ensemble std), aleatoric noise, and **cross-method disagreement (`|pred_A - pred_B|`)** inside a dedicated per-channel GroupKFold GLL calibrator (never tune $\mu$ correction inside the $\sigma$ head).
+   - **FP64 for Coupled Physics+Polynomial Solvers**: Use `float64` whenever jointly optimizing high-degree drift polynomials and nonlinear physical forward models (`iminuit` MIGRAD, Levenberg-Marquardt, sparse-Jacobian `trf`).
+   - **Median-Thresholded Ensemble Loss**: Under negative log-likelihood training, weighting per-member gradients via `w = stop_gradient(relu(losses - median(losses)))` updates only worse-than-median ensemble members, curbing ensemble collapse and overfitting.
+2. **Differentiable Metric-Filter Surrogates & Async Multi-GPU Pipelining**:
+   - Mirror non-differentiable evaluation defenses (JPEG, crop, blur, FFT) as differentiable PyTorch ops to backpropagate perceptual/VLM losses directly into vector/image parameters (optimize straight-line polygons over unstable Bézier curves in `diffvg`).
+   - Use **`DRaFT-LV`** to backpropagate downstream format-conversion fidelity (`-LPIPS(raw, converted)`) into diffusion LoRAs, overlap CPU conversion between `cuda:0` generation and `cuda:1` VLM reranking via 3-process async queues, and prefer simple **binary VLM yes/no logits** over noisy synthetic multi-question VQA chains.

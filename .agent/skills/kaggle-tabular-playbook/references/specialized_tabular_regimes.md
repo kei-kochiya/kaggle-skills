@@ -48,14 +48,18 @@ For right-censored survival data `(event ∈ {0, 1}, time)` evaluated by **Conco
 
 ---
 
-## 4. Pairwise Matchup Symmetry & Graph Ratings
+## 4. Pairwise Matchup Symmetry, Asymmetric Flipping & Graph Ratings
 
-For head-to-head outcome probability prediction (`Brier Score` / `LogLoss` across seasons/tournaments):
+For head-to-head outcome prediction (`Brier Score` / `LogLoss` / `RMSE` across seasons, tournaments, or unseen games):
 
-- **Strict Antisymmetric Representation + Symmetric Augmentation**: Construct strictly antisymmetric difference features (`f_A - f_B`) and double training rows with mirrored `(B, A, 1 - y)` pairs (enforcing $P(A, B) + P(B, A) = 1$).
-- **Strict Leave-One-Season-Out (LOSO) CV**: Random splits leak team strength within the same season.
-- **Global Graph Latent Ratings + Ultra-Minimal Feature Pruning**: Compute global graph ratings across the full season schedule (ridge/GLM team quality, Colley/SRS, margin-of-victory Elo, pace-normalized efficiency), then aggressively prune to the top `3–10` orthogonal differences (`LogisticRegression` + shallow `XGB(max_depth=2..4)` frequently crush deep trees on small-N seasons!).
-- **Continuous Margin Regression → Isotonic Calibration**: Regress continuous score differential (`Score_A - Score_B`, which carries far more information per game than binary `0/1` wins) and map predicted margins to probabilities via OOF Isotonic / Logistic calibration, applying gentle tail clipping (`[0.02, 0.98]`) under Brier Score to cap upset log/squared penalties.
+- **Strict Antisymmetric vs. Asymmetric-Advantage Flip Augmentation + TTA**:
+  - For symmetric neutral-site matchups, construct antisymmetric differences (`f_A - f_B`) and mirror `(B, A, 1 - y)` (or `-y` on `[-1, 1]`).
+  - When structural **side/first-mover/home-field bias** exists ($u(A, B) \neq -u(B, A)$), swap `(A, B)` and negate `y` **while also inverting all side-advantage & balance covariates** (`side_adv → 1 - side_adv`, `balance → -balance` / inverted) and test an `is_augmented` flag, **separate original vs. flipped models**, **Stage-1 Flipped → Stage-2 Original**, or **`MultiRMSE([y, -y])`**, averaging `(pred_orig - pred_flip) / 2` at inference (always score CV strictly on unaugmented original rows!).
+- **Strict Unseen-Group / Near-Duplicate Clustered CV**: Use Leave-One-Season-Out (LOSO) or `StratifiedGroupKFold`; when group IDs contain near-duplicate variants (e.g., similar rulesets/entities), cluster group text/embeddings (`TF-IDF + KMeans`) *before* assigning folds.
+- **Global Graph Latent Ratings vs. Embedded Fast-Proxy Simulation**:
+  - For seasonal schedules, compute global graph ratings (ridge/GLM team quality, Colley/SRS, margin-of-victory Elo, pace-normalized efficiency), then aggressively prune to the top `3–10` orthogonal differences (`LogisticRegression` + shallow `XGB(max_depth=2..4)` crush deep trees on small-N seasons).
+  - When an exact domain simulator/interpreter is permitted at test time, run a **fast proxy simulation probe** per unseen group + train with **multi-run stochastic feature noise augmentation** (sampling across repeated simulation runs per epoch) to prevent overfitting single-run noise.
+- **Calibration & Mean-Shrinkage Control**: Regress continuous score differentials when available → OOF Isotonic/Logistic calibration (gentle `[0.02, 0.98]` clipping under Brier); on bounded `[-1, 1]` RMSE targets where GBDTs shrink toward `0`, pair **`LightGBM DART` + `TabM` + `CatBoost`** with **nested OOF Isotonic / CIR** rather than unvalidated LB multipliers.
 
 ---
 

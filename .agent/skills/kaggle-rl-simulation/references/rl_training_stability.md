@@ -85,9 +85,11 @@ In games that can finish early, setting $\gamma = 1.0$ with win-only terminal re
   Avoids noisy per-step shaping penalties that can trigger reckless suicidal rushes while rewarding clean game conversion.
 - **Fixed-Horizon Exception**: If every episode runs a fixed number of turns to a terminal score comparison, do **not** add an artificial early-finish bonus; keep $\gamma = 1.0$ (or horizon-matched discounting) so late-game conversion retains full credit.
 
-### 4.2 Action Masking & PPO Support Parity
-- Separate **illegal/impossible actions** (must always be masked) from **legal-but-risky actions** (masking vs. letting the agent learn physics/consequences is an empirical ablation).
-- Whatever conditional support mask and sampling temperature were applied during rollout collection **must** be reproduced identically during PPO gradient updates.
+### 4.2 Action Masking, Centralized Critics & Stochastic Inference
+- **Asymmetric ("Centralized") Critic in Partially Observable RL**: Keep the actor strictly limited to legal fog-of-war observations, but feed **full global ground truth** (both teams' units, hidden maps, true physics parameters) into a separate training-only value critic. Slashing GAE advantage variance frequently yields huge Elo gains even when the heavier critic cuts rollout throughput in half.
+- **Separate Illegal From Strategic Actions**: Always mask illegal/impossible moves, but avoid over-restrictive heuristic masks that forbid legal uncertain/bluffing actions (e.g., blind attacks into fog of war)—let RL learn risk/reward directly.
+- **Stochastic Mixed-Strategy Serving**: In imperfect-information adversarial games, test **temperature/stochastic sampling + symmetry TTA** alongside greedy argmax at inference so deterministic patterns cannot be counter-exploited.
+- **PPO Support Parity**: Whatever conditional support mask and sampling temperature were applied during rollout collection **must** be reproduced identically during PPO gradient updates.
 
 ---
 

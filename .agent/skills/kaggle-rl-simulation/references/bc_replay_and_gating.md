@@ -48,6 +48,8 @@ Instead of discarding sub-optimal replays when building a diverse BC corpus:
 - **Conditioning Embeddings**: Tag each trajectory with `(Teacher/Style ID, Recency Bucket, Outcome)` and randomly drop the style embedding (`~10%`) during training to force generalization. At inference, prompt with `(Top Teacher, Latest Recency, Win)`.
 - **Pretrain → Narrow Fine-Tune → Weight Soup**: Pretrain on a broad multi-teacher corpus for coverage, briefly fine-tune on the single strongest elite style (or solver trajectories), and average weights across top fine-tuned checkpoints (**Checkpoint Soup**) for variance reduction.
 - **Rare-Action Loss Weighting**: Up-weight rare, game-deciding strategic actions (e.g., permanent expansions or terminal transitions occurring only 1–3 times per episode) so frequent `PASS`/movement turns do not dominate cross-entropy gradients.
+- **Exclude Decided-Match Garbage Time**: In multi-round / Best-of-N games, filter out turns from already-clinched rounds (where strong bots often go passive or conserve clock) before training behavioral cloning.
+- **Persistent Belief-State Tracking + Spatial Entropy Channels**: When hidden physics or map parameters persist across multiple rounds of a match, pair the neural policy with a deterministic/Bayesian state tracker (exact constraint elimination or posterior probability maps + **spatial entropy channels**) rather than forcing raw end-to-end pixels to rediscover hidden parameters from scratch.
 
 ---
 

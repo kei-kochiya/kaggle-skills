@@ -44,3 +44,6 @@ Battle-tested patterns proven across multi-agent tabular & 400-task neural-circu
    - Whenever final scoring evaluates a bundle of $M$ tasks/models under a hard global Kaggle wall-clock budget $T_{\max}$, archive multiple Pareto-optimal `(score_{i,k}, runtime_{i,k})` candidates per task $i$ and solve the exact **MCKP**:
      $$\max \sum_{i=1}^M \sum_{k} s_{i,k} x_{i,k} \quad \text{s.t.} \quad \sum_k x_{i,k} = 1\;\forall i,\quad \sum_{i,k} t_{i,k} x_{i,k} \le T_{\max} - T_{\text{margin}}$$
    - Guarantees maximum leaderboard score with zero timeout disqualifications.
+5. **Downstream-Cost-Aware Compression & Exact Subproblem DP**:
+   - Never optimize raw code/artifact size when the grader scores **post-compression / escaped byte length**—score every LLM sample, fuzzer edit, and rewrite *after* final compression (preferring "DRY" repetition and uniform symbol tables when they shrink compressed entropy).
+   - Replace noisy GA/SA on structured discrete subproblems (optimal Huffman code lengths, escaped-literal LZ77 parsing) with **exact Dynamic Programming**, reserving 2-stage **liveness-graph Optuna → Simulated Annealing** for non-separable outer variable naming, and trigger targeted LLM exploration via **AST rule prompts + empty-sandbox blank-slate restarts**.

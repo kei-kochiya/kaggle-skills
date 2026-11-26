@@ -6,7 +6,7 @@ description: >-
 
 # Kaggle Scientific ML, Inverse Physics & Combinatorial Optimization Playbook
 
-A strictly universal, cross-competition runbook distilled from gold-medal solutions across **protein function DAG prediction (CAFA 6)**, **3D biomolecular folding (Stanford RNA 3D)**, **image-to-1D waveform digitization (PhysioNet ECG)**, **geophysical PDE inversion (Yale FWI)**, **2D geometric packing (Santa 2025)**, and **exact neural/ONNX circuit compilation (NeuroGolf 2026)**. Competition-specific formulas and constants stay strictly in `Handbook/`.
+A strictly universal, cross-competition runbook distilled from gold-medal solutions across **inverse physics & exoplanet spectroscopy**, **protein function DAG prediction**, **3D biomolecular folding**, **cross-modal image-to-signal & text-to-SVG generation**, **2D geometric packing**, **exact program compression**, and **autonomous multi-LLM optimization factories**. Competition-specific formulas and constants stay strictly in `Handbook/`.
 
 ---
 
@@ -23,13 +23,14 @@ Whenever a known forward physical simulator $F: y \mapsto x$ exists (PDEs, wave 
    - **Per-Sample Network-Weight TTO**: Optimize network weights $\theta$ per test sample on $\|F(M_\theta(x)) - x\|_1$ (uses the neural architecture as an implicit prior).
    - **Gradient-Free Fixed-Point Residual Iteration**: $x_{k+1} = x_k - \lambda (F(M(x_k)) - x)$ when $F$ is non-differentiable or expensive to backprop.
    - **2-Stage Physics-Residual Correction Network**: Feed `[x, x - F(y_1), y_1]` into Stage 2 to predict $\delta y = y - y_1$.
-3. **Non-Aligned Domain Architectures & L1/MAE Ensembling**:
+3. **Non-Aligned Domain Architectures, GLL Uncertainty Calibration & L1/MAE Ensembling**:
    - When input and output lack pixel-to-pixel alignment, discard pixel-aligned UNet skips in favor of **side-by-side spatial canvases + pure ViT+RoPE encoder–decoders** + **`MuonWithAuxAdam`**.
+   - Under **Gaussian Log-Likelihood (GLL)**, **never submit uncalibrated Bayesian/GP/ensemble $\sigma$**: enforce hard **`MIN_SIGMA` floors** + boundary/fit-residual fallback inflation, use **FP64** for ill-conditioned physics+polynomial solvers, separate mean ($\mu$) fitting from out-of-fold per-channel $\sigma$ calibration (combining epistemic spread + **cross-method disagreement `|pred_A - pred_B|`**), and test **Median-Thresholded Ensemble Loss** (`relu(loss - median)`) to prevent likelihood ensemble collapse.
    - Under **MAE**, ensemble via exact **median (`torch.quantile(stack, 0.5)`)** across models/checkpoints (never implement weighted median by repeating arrays, which collapses to unweighted median).
 
 ---
 
-## 2. Cross-Modal Image-to-1D-Signal Digitization
+## 2. Cross-Modal Digitization & Differentiable Format-Constrained Generation
 
 1. **Single-Step High-Res Rectification & Extreme Horizontal Resolution**:
    - Estimate rotation + indexed grid keypoints/lines at low resolution, then apply **one single `grid_sample` / `INTER_LANCZOS4` remap directly to the raw high-res image** (eliminates double-interpolation blur for `+2.5 dB` gains).
@@ -40,6 +41,9 @@ Whenever a known forward physical simulator $F: y \mapsto x$ exists (PDEs, wave 
 3. **Lag-Aligned Signal-Space Blending, Weighted Median & Gated Physics**:
    - **Never average unaligned 1D signals across diverse models** (acts as a low-pass peak-blurring filter!) — cross-correlation align within metric lag tolerance *before* blending, and prefer **Weighted Median** over Weighted Mean to suppress outlier spikes.
    - Fuse stacked simultaneous channels vertically in decoder skip connections, and apply physical conservation laws (e.g., Einthoven's Law) **only when residuals fall below a tight gate**.
+4. **Differentiable Metric-Filter Surrogates, Format-Aware Fine-Tuning & Async `GPU0→CPU→GPU1` Pipelining**:
+   - When an evaluation metric applies non-differentiable filters (JPEG, crop, blur, FFT) before VLM/CLIP scoring, build a **differentiable PyTorch mirror** for end-to-end test-time optimization (prefer straight-line polygons over unstable Bézier curves in `diffvg`), and backpropagate downstream format-conversion fidelity (`-LPIPS(raw, converted)`) via **`DRaFT-LV`**.
+   - Overlap heavy CPU conversion/vectorization asynchronously between generator (`cuda:0`) and VLM reranker (`cuda:1`), and prefer simple **binary VLM yes/no logit scoring** over noisy multi-question synthetic VQA at test time.
 
 ---
 
@@ -62,8 +66,9 @@ Refer to [`references/combinatorial_packing_and_agent_factories.md`](./reference
    - **Fixed-Box Feasibility Relaxation + Discrete Shrink > Joint Container Minimization**: Fix container size $L - \delta$, minimize overlap/violation energy to zero, then step-shrink $L$ (reserve joint container optimization strictly for final `legalize`).
    - **Precomputed Collision LUTs (`30k` Relaxations/s)**: Replace inline polygon intersection with precomputed **CUDA 3D Minkowski separation LUTs** or **convex-part SAT LUTs** feeding batched GPU L-BFGS / `float32` SIMD PBD relaxation (`4e-7` safety gap), and **always legalize against the host's exact precision/geometry engine** (`Decimal`/`Shapely`).
    - **Asymptotic Bulk Cores, Symmetry & Cross-$N$ Transfer**: Solve the infinite periodic crystal first (check **non-perpendicular** lattices!), freeze or merge interior bulk cores into a single rigid hull, exploit exact `180°` symmetry, and transfer structures across $N \leftrightarrow N\pm 1$ via buffer-zone removal, corner transplants, and aspect-ratio perturbations.
-2. **Autonomous Multi-LLM Optimization Factories & Global Budget Packing**:
-   - **Blank-Slate Architectural Rewrites (`10×` Gain) >> Local Pruning**: Force agents to price multiple paradigms from scratch when greedy refinement stalls, and pair **vertical deep-thinking exploration** with **horizontal proof-verified idiom registries (`md5` + votes + `negative_knowledge.md`)**.
+2. **Autonomous Multi-LLM Optimization Factories, Exact Compression DP & Global Budget Packing**:
+   - **Blank-Slate Architectural Rewrites (`10×` Gain) >> Local Pruning**: Force agents to price multiple paradigms from scratch in clean empty sandboxes when greedy refinement stalls, pair **vertical deep-thinking exploration** with **horizontal proof-verified idiom registries (`md5` + votes + `negative_knowledge.md`)**, and trigger targeted LLM hints via automated AST diagnostics.
+   - **Optimize Strictly After Downstream Transforms (Compression/Escaping)**: Whenever final score depends on compressed or escaped byte length, evaluate every candidate *after* the full downstream transform (including "DRY" repetition when it shrinks entropy); solve discrete subproblems (Huffman lengths, escaped-literal LZ77) with **exact DP** and outer assignments (variable renaming) via liveness-graph Optuna → SA.
    - **Transactional Validation (`backup → validate → promote/restore`) + Fresh OOD Stress Tests**: LLM-claimed improvements fail hidden tests frequently without independent reference consensus and fresh stress generators.
    - **Multiple-Choice Knapsack (`MCKP`) Final Assembly**: Whenever bundling $N$ independent models/tasks under a hard global Kaggle runtime cap, retain Pareto `(score, runtime)` candidates per task and solve an **exact MCKP** to maximize total score inside the runtime ceiling.
 
@@ -72,4 +77,4 @@ Refer to [`references/combinatorial_packing_and_agent_factories.md`](./reference
 ## 5. References & Case Studies
 - [Physics Inversion, Cross-Modal Digitization, DAG Stacking & Best-of-K Portfolios](./references/physics_inverse_and_cross_modal.md)
 - [Combinatorial Packing, Precomputed Collision LUTs & Autonomous Multi-LLM Factories](./references/combinatorial_packing_and_agent_factories.md)
-- Case Studies: [`CAFA 6`](../../../Handbook/multimodal/cafa-6-protein-function.md) · [`Stanford RNA 3D-2`](../../../Handbook/multimodal/stanford-rna-3d-folding-2.md) · [`PhysioNet ECG`](../../../Handbook/multimodal/physionet-ecg-digitization.md) · [`Yale FWI`](../../../Handbook/multimodal/yale-geophysical-waveform-inversion.md) · [`Santa 2025`](../../../Handbook/optimization/santa-2025-tree-packing.md) · [`NeuroGolf 2026`](../../../Handbook/optimization/neurogolf-2026.md)
+- Case Studies: [`CAFA 6`](../../../Handbook/multimodal/cafa-6-protein-function.md) · [`Stanford RNA 3D-2`](../../../Handbook/multimodal/stanford-rna-3d-folding-2.md) · [`PhysioNet ECG`](../../../Handbook/multimodal/physionet-ecg-digitization.md) · [`Yale FWI`](../../../Handbook/multimodal/yale-geophysical-waveform-inversion.md) · [`Ariel 2025`](../../../Handbook/multimodal/ariel-data-challenge-2025.md) · [`Drawing with LLMs`](../../../Handbook/multimodal/drawing-with-llms.md) · [`Santa 2025`](../../../Handbook/optimization/santa-2025-tree-packing.md) · [`Google Code Golf 2025`](../../../Handbook/optimization/google-code-golf-2025.md) · [`NeuroGolf 2026`](../../../Handbook/optimization/neurogolf-2026.md)

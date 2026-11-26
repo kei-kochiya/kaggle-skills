@@ -17,13 +17,13 @@ A curated repository of competitive machine learning knowledge distilled from wi
 
 | Track | Entries | Core Scope | Catalog |
 | :--- | :---: | :--- | :--- |
-| **Tabular** | 14 | Forensics, FE, GBDTs, Tabular NNs, Tabular LLMs/TFMs, stacking & calibration | [Details](DETAILS.md#tabular-competitions) |
-| **RL & Simulation** | 4 + Starter | BC/PPO, executed-action labels, fast Rust/JAX engines, search & serving | [Details](DETAILS.md#reinforcement-learning--simulation-competitions) |
-| **Computer Vision** | 7 | Image regression, detection, segmentation, 3D medical/volumetric & foundation backbones | [Details](DETAILS.md#computer-vision-competitions) |
-| **NLP & LLMs** | 7 | Reasoning, post-training, low-resource MT, TTT, reranking, extraction & reward modeling | [Details](DETAILS.md#nlp--llm-reasoning-competitions) |
+| **Tabular** | 15 | Forensics, FE, GBDTs, Tabular NNs, Tabular LLMs/TFMs, live simulation, stacking & calibration | [Details](DETAILS.md#tabular-competitions) |
+| **RL & Simulation** | 5 + Starter | BC/PPO, asymmetric critics, executed-action labels, fast Rust/JAX engines, search & serving | [Details](DETAILS.md#reinforcement-learning--simulation-competitions) |
+| **Computer Vision** | 9 | Image regression, detection, segmentation, 3D volumetric/medical, SfM & foundation backbones | [Details](DETAILS.md#computer-vision-competitions) |
+| **NLP & LLMs** | 10 | Reasoning, post-training, TTT, code abstention, agent security, MT, reranking & reward modeling | [Details](DETAILS.md#nlp--llm-reasoning-competitions) |
 | **Time Series** | 6 | Temporal CV, kinematics, streaming finance, wearable sensors & pose-action segmentation | [Details](DETAILS.md#time-series--forecasting-competitions) |
-| **Multimodal & Audio** | 5 | Bioacoustics/SED, protein DAGs, RNA 3D folding, ECG digitization & inverse physics | [Details](DETAILS.md#multimodal-audio--science-competitions) |
-| **Optimization & Compression** | 2 | Combinatorial packing, GPU/SIMD relaxation, LNS, ONNX circuits & multi-LLM factories | [Details](DETAILS.md#optimization--compression-competitions) |
+| **Multimodal & Audio** | 7 | Bioacoustics/SED, protein DAGs, RNA 3D, ECG, Bayesian/PDE physics & differentiable rendering | [Details](DETAILS.md#multimodal-audio--science-competitions) |
+| **Optimization & Compression** | 3 | Combinatorial packing, GPU/SIMD relaxation, LNS, ONNX circuits, code golf & multi-LLM factories | [Details](DETAILS.md#optimization--compression-competitions) |
 | **Autonomous Workflows** | 1 | Multi-LLM competitive engineering & guardrails | [Guide](Handbook/workflows/llm-agentic-kaggle-workflow.md) |
 
 ---
