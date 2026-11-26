@@ -17,12 +17,12 @@ A curated repository of competitive machine learning knowledge distilled from wi
 
 | Track | Entries | Core Scope | Catalog |
 | :--- | :---: | :--- | :--- |
-| **Tabular** | 15 | Forensics, FE, GBDTs, Tabular NNs, Tabular LLMs/TFMs, live simulation, stacking & calibration | [Details](DETAILS.md#tabular-competitions) |
+| **Tabular** | 17 | Forensics, FE, GBDTs, Tabular NNs, LLMs/TFMs, RecSys/LTR, live simulation & calibration | [Details](DETAILS.md#tabular-competitions) |
 | **RL & Simulation** | 5 + Starter | BC/PPO, asymmetric critics, executed-action labels, fast Rust/JAX engines, search & serving | [Details](DETAILS.md#reinforcement-learning--simulation-competitions) |
-| **Computer Vision** | 9 | Image regression, detection, segmentation, 3D volumetric/medical, SfM & foundation backbones | [Details](DETAILS.md#computer-vision-competitions) |
-| **NLP & LLMs** | 10 | Reasoning, post-training, TTT, code abstention, agent security, MT, reranking & reward modeling | [Details](DETAILS.md#nlp--llm-reasoning-competitions) |
-| **Time Series** | 6 | Temporal CV, kinematics, streaming finance, wearable sensors & pose-action segmentation | [Details](DETAILS.md#time-series--forecasting-competitions) |
-| **Multimodal & Audio** | 7 | Bioacoustics/SED, protein DAGs, RNA 3D, ECG, Bayesian/PDE physics & differentiable rendering | [Details](DETAILS.md#multimodal-audio--science-competitions) |
+| **Computer Vision** | 12 | Regression, metric learning/re-ID, 2D det/instance seg, 3D volumetric/medical, SfM & backbones | [Details](DETAILS.md#computer-vision-competitions) |
+| **NLP & LLMs** | 11 | Reasoning, post-training, retrieval/reranking, TTT, code abstention, agent security, MT & RM | [Details](DETAILS.md#nlp--llm-reasoning-competitions) |
+| **Time Series** | 8 | Temporal CV, kinematics, streaming finance, demand MAPE, wearable IMU, pose & irregular curves | [Details](DETAILS.md#time-series--forecasting-competitions) |
+| **Multimodal & Audio** | 9 | Bioacoustics/SED, OOD speech ASR, protein DAGs, RNA 3D, ECG, extreme-imbalance 3D-TBP & physics | [Details](DETAILS.md#multimodal-audio--science-competitions) |
 | **Optimization & Compression** | 3 | Combinatorial packing, GPU/SIMD relaxation, LNS, ONNX circuits, code golf & multi-LLM factories | [Details](DETAILS.md#optimization--compression-competitions) |
 | **Autonomous Workflows** | 1 | Multi-LLM competitive engineering & guardrails | [Guide](Handbook/workflows/llm-agentic-kaggle-workflow.md) |
 

@@ -81,3 +81,26 @@ When supplementing small/sparse competition tables with noisy external databases
 - **Joint Real + Physics-Consistent Synthetic Training > 2-Stage Pretrain→FT**: Training jointly on mixed real + synthetic batches prevents catastrophic forgetting of synthetic physics priors during fine-tuning.
 - **Replacing `LayerNorm` with `BatchNorm2dFp32(track_running_stats=False)` in 2D Alignment Backbones**: When adapting pretrained `ConvNeXt` backbones to 2D alignment lattices/heatmaps with batch-specific intensity drift, swap `LayerNorm` for `BatchNorm2d` in FP32 with `track_running_stats=False` while copying pretrained affine `(weight, bias)` parameters.
 - **SoftMax Convex Gating + De-Shrinkage Gain**: Combine heterogeneous sequence/probabilistic models via a learned SoftMax convex gate (`sum w_m = 1`), and verify whether mild variance de-shrinkage (`1.02–1.03×` around fold mean) improves pooled RMSE on CV.
+
+---
+
+## 7. Extreme Class Imbalance (`<0.2%`), Entity-Relative Outliers & Multimodal OOF Stacking
+
+When positives are ultra-rare (`< 0.5%`, e.g., `300–500` positives among `400k+` rows) with multiple candidate records per parent entity (e.g., patient, account, device) and paired images/unstructured modalities—often evaluated on **Partial AUC (`pAUC`)** or top-tail sensitivity:
+
+1. **Entity-Relative "Outlier" Context Features (Largest Tabular Signal)**:
+   - When benign records on the same entity resemble one another while rare positives stand out as intra-entity anomalies, compute **group-relative statistics** (`(x - mean) / std`, `x - mean`, `x / max`, ranks, ECDFs, counts) grouped by `entity_id` and `(entity_id, subgroup/location/modality_type)`.
+   - Augment with **per-entity unsupervised outlier scores**—e.g., **Local Outlier Factor (`LOF`)**, **per-entity `kNN (k=5)` neighbor feature diffs**, or **`HBOS` pruned by KS-statistic** between positive and negative distributions.
+2. **Leak-Proof 2-Stage Vision-OOF → Entity-Relative GBDT Stacking**:
+   - End-to-end multimodal neural networks struggle to ingest cross-record entity distributions and scale poorly to `500k+` inference crops. Instead, stack OOF vision probabilities into GBDTs—**and compute entity-relative aggregations of the vision OOFs themselves** (`img_pred / entity_mean(img_pred)`, entity z-score/rank)!
+   - **Mandatory Anti-Leakage Protocol (Prevents Fake CV Collapse)**:
+     - Lock **identical entity-grouped folds** (e.g., **Triple-Stratified `GroupKFold`** balancing `entity_id`, positive rate, and entity record-count bins) across Stage-1 neural models and Stage-2 GBDTs.
+     - **Disable validation early stopping** on Stage-1 neural models (use fixed epochs + cosine/EMA/SWA) so OOF predictions never carry validation-peeking optimism.
+     - Standardize each Stage-1 OOF stream independently and inject **mild Gaussian noise (`std ≈ 0.1`) during Stage-2 GBDT training** to stop trees from over-splitting on Stage-1 OOFs; keep `~15–20%` tabular-only GBDTs in the final blend as regularization.
+3. **Auxiliary Multi-Task Supervision & Unseen-Source Generalization**:
+   - Under `~300–500` binary positives, train compact/mid-sized Stage-1 encoders with **rich train-only auxiliary targets** (fine-grained subtypes, biopsy/severity metadata, self-supervised tabular-image alignment, or pseudo-segmentation) and **balanced per-batch / rotated negative-shard sampling** (`1:1` to `1:10`).
+   - Always test external datasets with an **adversarial domain classifier** first (`AUC > 0.95` flags severe domain mismatch—down-weight or multi-task rather than naive mixing).
+   - When `30%+` of test comes from **unseen sources/sites** (e.g., hospitals/devices), validate via **Leave-Site-Out holdouts**, route known vs. unseen sites through dual tracks (with vs. without site ID), or inject synthetic `NaN`-site training copies and map unseen test sites to `NaN`.
+4. **Statistical Significance CV, Shard Bagging & Anti-Patterns**:
+   - With `< 500` total positives, single-seed CV deltas are noisy—validate decisions with **multi-seed paired t-tests**, bag GBDTs across **negative shards × split seeds (`50–300+` trees/models)**, and aggressively prune zero/negative permutation-importance features.
+   - **Avoid**: Hard negative mining on noisy labels, Focal/pAUC surrogate losses (standard BCE + balanced sampling usually wins), and placing `Resize` before blur/dropout augmentations (always resize right before `Normalize`).

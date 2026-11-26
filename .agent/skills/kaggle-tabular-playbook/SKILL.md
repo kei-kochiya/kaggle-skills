@@ -138,12 +138,14 @@ Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md
 ### Track C: Imbalanced Multiclass & Specialized Tabular Regimes
 1. **Balanced-Accuracy Mathematical Duality (Never Double-Correct!)**: Class-weighted log-loss ($w_c = 1/(K\cdot\pi_c)$) and unweighted calibrated probabilities divided by priors (`argmax(p / π_c)`) share the exact Bayes rule. Combine weighted GBDTs + prior-divided NNs, **never apply both to the same model** (`-0.04` to `-0.06` drop!), and strip base PP before meta-stacking.
 2. **Ordinal + OvR Pairwise Rankers & Hierarchical Binary Cascades**: Pair ordinal/OvR `XGBRanker` and 2-stage hierarchical cascades with a **Class-Weighted GPU Multinomial Logit Stacker**.
-3. **Specialized Tabular Regimes**: See [`references/specialized_tabular_regimes.md`](./references/specialized_tabular_regimes.md) for **split-half exact-value diagnostics & `float32` vocab safety**, **target-free Masked Density Transformer distributional imputation**, **factorized two-task survival modeling (`P(event)` + `E[rank(-t)|event=1]`)**, **pairwise matchup symmetry & graph ratings**, **dirty external-data 5-step pipelines & dense→sparse chaining**, and **heavy-tail `k*` validation**.
+3. **Specialized Tabular Regimes**: See [`references/specialized_tabular_regimes.md`](./references/specialized_tabular_regimes.md) for **split-half exact-value diagnostics & `float32` vocab safety**, **target-free Masked Density Transformer distributional imputation**, **factorized two-task survival modeling (`P(event)` + `E[rank(-t)|event=1]`)**, **pairwise matchup symmetry & graph ratings**, **dirty external-data 5-step pipelines & dense→sparse chaining**, **heavy-tail `k*` validation**, and **extreme-imbalance (`<0.2%`) entity-relative outlier context & leak-proof 2-stage vision-OOF → GBDT stacking**.
+4. **Recommender Systems & Tabular Learning-to-Rank**: See [`references/recsys_retrieval_and_ltr.md`](./references/recsys_retrieval_and_ltr.md) for **two-stage session RecSys (`Recall@K` multi-view co-visitation/neural/GNN retrieval → leak-free multi-objective GBDT/GNN reranking)** and **tabular query/session LTR (`HitRate@K`/`NDCG`, transductive count encoding, dual-level group/sub-entity ranks, strictly causal numeric/rank history, post-FE group capping, per-group normalization)**.
 
 ---
 
 ## 7. References & Deep Dives
-- [Specialized Tabular Regimes (Balanced Acc, Imputation, Survival, Matchups, External Data & `k*`)](./references/specialized_tabular_regimes.md)
+- [Recommender Systems, Multi-Stage Retrieval & Learning-to-Rank](./references/recsys_retrieval_and_ltr.md)
+- [Specialized Tabular Regimes (Balanced Acc, Imputation, Survival, Matchups, External Data, Extreme Imbalance & `k*`)](./references/specialized_tabular_regimes.md)
 - [Exploratory Data Forensics (DS & DA Playbook)](./references/eda_data_forensics.md)
 - [Feature Engineering Toolkit](./references/feature_engineering.md)
 - [Leak-Free Multi-Agg Target Encoding](./references/oof_target_encoding.md)

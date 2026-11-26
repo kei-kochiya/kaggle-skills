@@ -53,3 +53,34 @@ Transferable temporal modeling patterns distilled from gold-medal solutions acro
    - Use **GNN (`TransformerConv` / `ST-GCN`) + Egocentric Squeezeformer / RoPE Transformer + Pairwise RelationNetwork** (or `MacroSoftF1` annealing) instead of concatenating agents into flat conv channels.
    - **Strong Cross-Family Lift**: Blending temporal neural networks (`TCN`/`Squeezeformer`/`CNN-Transformer`) with per-(domain, action) GBDTs delivers huge additive gains (`+0.02+` F1 over either family alone; note horizontal flip helps 1D NNs but can hurt GBDTs, and reverse-time TTA hurts directed actions!).
    - **Sliding-Window Boundary Cropping & Margin Decoding**: Discard noisy edge frames (`~32` frames each side) during sliding-window overlap averaging, test **offset-rotated strided inference** (`stride=7` + linear interpolation for `7×` speedup + smoothing), and resolve simultaneous multi-action triggers via **per-(domain, action) margin tie-breaking (`argmax(p - thr)`, `p / thr`, z-score, or learned paired `p1 - p2` tournament)**.
+
+---
+
+## 4. Multi-Horizon Retail Demand Forecasting (`MAPE` & Structural Growth)
+
+When forecasting daily/weekly multi-entity demand across a fixed future horizon (`30–90` days) under **MAPE** with calendar effects and non-stationary entity growth:
+
+1. **Horizon-Matched Multi-Window Temporal CV & Simple Anchor**:
+   - Never rely on a small random-split Public LB. Validate across **multiple non-overlapping horizon-matched rolling windows** (e.g., `5 × 61-day` blocks) plus **year-prior same-season splits** to align major moving holidays, anchored against a zero-leakage **previous-horizon weekday-average baseline**.
+2. **Calendar Forensics & Structural-Shift Trimming**:
+   - Audit missing dates (typically closed-entity days / regional Sundays) and patch missing regional holidays across the **merged `train + test` calendar** *before* computing `days_until_next_holiday`, `days_since_last_holiday`, and contiguous closed-day run lengths.
+   - Because standard GBDTs cannot extrapolate unbounded trends, **trim stale pre-growth history** when entities undergo structural regime jumps (e.g., new launches or acquisitions) and test **`delta_days_from_start`** + **LLM text embeddings of holiday descriptions** alongside `1.3×` holiday sample weights.
+3. **MAPE Objective Hygiene & Direct-Horizon Anti-Patterns**:
+   - Ablate **`log(y)` target + `MAE (L1)` loss** (often far more stable against Public→Private shakeup under small-denominator variance) directly against **native `MAPE` loss** on multi-window horizon CV.
+   - **Avoid**: Raw short-horizon target lags on long direct forecast horizons without test actuals (consistently degrade GBDTs), predicting train-only operational/weather columns as noisy proxies, and splitting out individual outlier entities into isolated models instead of one shared global calendar GBDT (or test **lags-as-extra-rows** multi-offset augmentation).
+
+---
+
+## 5. Irregular Multi-Band Heteroscedastic Time-Series Classification (Small-N `F1`)
+
+When classifying rare events (`< 5%` positives, tiny positive counts `100–300`) from asynchronously sampled multi-channel curves `(t_i, val_i, err_i, band_i)` under discrete **Binary F1**:
+
+1. **2D Gaussian Process Interpolation & Parametric Template $\chi^2$ Residuals**:
+   - Fit a **2D separable GP kernel (`k_time * k_channel`, e.g., Matérn-3/2)** incorporating heteroscedastic measurement errors `err_i²` directly into the noise diagonal to synthesize dense cross-band grids, post-peak colors/ratios, and characteristic timescales.
+   - Compute **goodness-of-fit $\chi^2$ residuals against canonical physical/parametric curve templates** (often more robust on faint/noisy events than noisy free-parameter fits) alongside baseline-crossing / negative-signal fraction, SNR duration width, and uncertainty-weighted shape moments.
+2. **Covariate-Shift Weighting & External Pretraining for Deep Sequence Models**:
+   - When test carries noisier auxiliary metadata than train (e.g., estimated vs. exact measurements), run **Adversarial Validation sample reweighting** to restore CV→LB correlation—and ablate whether keeping observer-frame features + raw noisy covariate beats propagating noisy covariate errors into transformed timescales!
+   - From-scratch RNNs/Transformers collapse on tiny irregular positive counts (`~100–200`); unlock neural diversity via **pretraining on larger external multi-band corpora** (testing ReLU and no positional encoding on irregular grids) and blending with GBDTs via **disagreement/conflict-zone rules (`|P_DL - P_GBDT|`)**.
+3. **Base-Rate-Aligned Small-N `F1` Thresholding & Anti-Patterns**:
+   - Tune thresholds via **global OOF PR-curve or median per-fold OOF threshold**, verifying that the test predicted positive rate stays tightly anchored to the true class base rate.
+   - **Avoid on Small-N Imbalanced `F1`**: `SMOTE` / `ADASYN` / synthetic oversampling, aggressive SHAP feature pruning, heavy Optuna HPO, naive test pseudo-labeling, and blind multi-model/multi-seed blending when each fold contains only `~20–30` positives (regularized single GBDTs frequently out-generalize complex stacks!).

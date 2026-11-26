@@ -74,14 +74,24 @@ Uncapped pseudo-labeling collapses distilled models and overfits Public LB. Enfo
 
 ---
 
-## 5. Universal Audio Anti-Patterns
+## 5. Phase 5: Out-of-Domain Speech ASR (`Whisper` + CTC + KenLM)
+
+When the task is sequence-to-sequence speech transcription (`WER`/`CER`) under read→spontaneous OOD shift (see Section 5 of [`references/audio_distillation_pl_serving.md`](./references/audio_distillation_pl_serving.md)):
+1. **Iterative Transcript Cleaning & OOD Length Simulation**: Bootstrap clean-data filtering (`WER < 15%` for Whisper; `WER/MOS/chars-per-sec` for CTC), concatenate clips to match test utterance length, simulate `16k→8k→16k` telephony + reverb/music noise, and validate on a target-domain OOD set (not clean read speech).
+2. **Custom Compact Whisper Tokenizers & Decoupled Punctuation**: Train a compact language-specific Whisper tokenizer (`~12k` vocab) on non-English scripts to unlock beam search inside tight GPU caps, use timestamp-advancing `>30s` decoding, and decouple speech recognition from a dedicated **Transformer token-classification punctuation restorer** (`-0.02` to `-0.035` WER).
+3. **True CTC Ensembling & KenLM Hygiene**: Never average raw CTC logits directly (spike misalignment)—fuse via **frozen hidden-state concat → tiny Transformer+CTC head** or **multi-model N-best KenLM sentence rescoring**; prefer pruned **ARPA > `.bin`**, verify `</s>` EOS, flush logits to disk + call `decoder.cleanup()` against C++ RAM leaks, and avoid unconditional neural speech denoisers (distort phonemes).
+
+---
+
+## 6. Universal Audio Anti-Patterns
 
 - **Heavy Vision Transformers (`ViT`, `ConvNeXt-Large`, `PaSST`) under tight CPU caps**: Poor accuracy-per-CPU-second compared to OpenVINO-compiled `EffNetV2-S`, `ECA-NFNet-L0`, `RegNetY`, `SEResNeXt26`.
 - **Unfiltered massive external audio dumps**: Domain/microphone mismatch and unverified taxonomy synonyms silently corrupt calibration; audit label joins and cap per-class external volume.
 - **Applying identical post-processing blindly across all model families**: Tune smoothing and calibration separately per model family on target-domain CV.
+- **Unconditional neural speech enhancement/denoising (`DeepFilterNet`, `CleanUNet`)**: Frequently distorts human speech phonemes and degrades ASR WER unless gated conditionally.
 
 ---
 
-## 6. References & Case Studies
-- [Cosine Embedding Distillation, Capped Soft PL, Rank Blending & Shared-Mel OpenVINO](./references/audio_distillation_pl_serving.md)
-- Case Study: [`Handbook/multimodal/birdclef-2026.md`](../../../Handbook/multimodal/birdclef-2026.md)
+## 7. References & Case Studies
+- [Cosine Embedding Distillation, Capped Soft PL, Rank Blending, Shared-Mel OpenVINO & OOD Speech ASR](./references/audio_distillation_pl_serving.md)
+- Case Studies: [`BirdCLEF+ 2026`](../../../Handbook/multimodal/birdclef-2026.md) · [`Bengali.AI Speech ASR`](../../../Handbook/multimodal/bengaliai-speech-asr.md)

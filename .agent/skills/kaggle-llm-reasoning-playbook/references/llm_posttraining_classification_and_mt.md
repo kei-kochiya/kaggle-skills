@@ -83,3 +83,25 @@ For discriminative classification, moderation, or multi-choice reranking (`ROC-A
    - **Exact Target-Runtime Parity**: When evaluation executes against a quantized inference engine (e.g., GGUF / `llama.cpp` / INT4) or stateful tool harness, reproduce the **exact runtime build, quantization format, chat template, and tool-execution loop** locally — float16/BF16 surrogate scores frequently fail to transfer across quantization boundaries.
    - **Bridge BF16 Optimization → Quantized Targets via Surrogate Reranking**: Generate diverse candidate prompts/triggers with continuous or discrete gradient search (`GCG` / coordinate ascent) on BF16 weights, then **rerank/filter through a fast regression surrogate (e.g., Ridge) trained directly on quantized runtime responses** and verify top candidates end-to-end against live environment state.
    - **Full-Trajectory Loss & Probe Diversity**: Optimize jointly over both the **tool-invocation tokens** and **post-tool follow-up trajectory tokens** (`L_call + L_post_tool`); prefer **diverse single-hop probes** over brittle long multi-hop payload packing, which degrades sharply on unseen private templates and hidden system prompts.
+
+---
+
+## 6. Open-Catalog LLM Bi-Encoder Retrieval & Progressive Multi-Stage Reranking
+
+When retrieving and ranking top-$K$ candidates from a `1k–10k+` text catalog where **a large fraction of test target labels are unseen during training**:
+
+1. **Unseen-Target-Aware Validation**:
+   - Grouping folds by fine-grained item/question ID leaves `~80%` seen targets in validation and rewards memorizing train labels. Group folds by a **higher semantic hierarchy** (topic/construct/subject) and track an **unseen-label-only validation slice** alongside overall `MAP@K` / `Recall@K`.
+2. **Stage 1 — Optimize Bi-Encoders Strictly for `Recall@K` (Not `MAP@K`)**:
+   - Fine-tune decoder-LLM embedders (`14B–32B`, last-token pooling > mean pooling) with `MultipleNegativesRankingLoss` (`temp ≈ 0.01`), enforcing **strictly 1 example per label per batch** to avoid false in-batch negatives.
+   - **Recall Trap**: Distilling reranker rankings into a retriever can raise retriever `MAP@K` while *dropping* `Recall@32`—always select Stage-1 checkpoints by **downstream candidate recall** (`Recall@32–64`) and use dynamic similarity cutoffs (`top-32` + up to `32` within `top1_sim - 0.06`).
+   - **Closing the Unseen-Catalog Gap Offline**:
+     - **Zero-Latency Catalog Expansion**: Pre-generate rich LLM descriptions/examples for every catalog label offline before embedding (`+2–4%` recall at zero test-time latency).
+     - **Clustered Contrastive Synthetic Data**: Cluster neighbor catalog entries by confusion/co-occurrence and generate synthetic queries referencing 4–5 sibling labels so the generator teaches fine boundaries, filtered by an LLM judge and cosine deduplication.
+     - **Distilled Query-Reasoning CoT**: Fine-tune compact reasoners to explain the query's underlying intent *without* seeing candidates, appending that CoT to both retriever and reranker inputs (with 50% CoT dropout during training).
+3. **Stage 2 — Progressive `14B → 32B → 72B` Pointwise-to-Listwise Funnel & Serving**:
+   - **Train-Seen-Only Negative Sampling**: Restrict training negatives to catalog labels that *also* appear as positives in train; otherwise the reranker learns a shortcut to penalize unseen catalog entries (`+0.02` to `+0.025` gain!).
+   - **Pointwise → Listwise Funnel**: Score `32–64` candidates pointwise (`logits_yes - logits_no` with grouped CE + `vLLM enable_prefix_caching=True`) using a `14B` model → refine top `8` with a `32B` model → jointly rank top `5` (or sliding `10–52`-way single-token `A–Z, a–z` windows with `MultipleChoiceLogitsProcessor`) using a `70B/72B` model.
+   - **Order-Bias Mitigation**: Always mitigate listwise candidate-position bias via **random shuffling during training + reverse/permutation TTA at inference**.
+   - **Serving 70B/72B on 2×T4 & Weight Merging**: Combine **task-calibrated AutoAWQ / `AutoRound` 4-bit** (generic calibration degrades top-1), `tensor_parallel_size=2`, **`cpu_offload_gb=8`**, `max_tokens=1`, and **parameter-space LoRA averaging / `WiSE-FT` (`alpha ≈ 0.8`)**.
+   - **Anti-Patterns**: Iterative hard-negative mining often pulls in unlabeled near-duplicate false negatives and hurts generalization; avoid CoT-reasoning checkpoints as single-token rerankers, and avoid aggressively tuning unseen-class probability multipliers on tiny Public LBs.
