@@ -1,77 +1,43 @@
-# Riemannian Hypersphere ($\mathbb{S}^{N-1}$) Fréchet Barycenter Ensembling & Boundary Invariants
+# Riemannian Hypersphere ($\mathbb{S}^{N-1}$) Fréchet Barycenter Ensembling & Boundary Rules
 
-> **Target Metric:** Rank-based classification metrics (ROC-AUC, Gini, Precision-Recall AUC).  
-> **Core Concept:** Fusing high-dimensional model prediction vectors along the intrinsic geodesic curve of the unit hypersphere $\mathbb{S}^{N-1}$ to prevent Euclidean norm collapse, coupled with deterministic generator invariant enforcement and zero-tie lexicographical sorting.
+> **Target Metric:** Rank-based classification metrics (ROC-AUC, Gini, PR-AUC).  
+> **Core Concept:** Fusing high-dimensional model prediction vectors along the intrinsic geodesic curve of the unit hypersphere $\mathbb{S}^{N-1}$ to prevent Euclidean norm collapse, combined with strictly verified deterministic boundary guards and zero-tie lexicographical sorting (`lexrank`).
 
 ---
 
 ## 1. Mathematical Motivation
 
 ### 1.1 The Euclidean Shrinkage Problem in Ensembling
-When ensembling $K$ diverse, high-performing model predictions $\mathbf{p}_1, \dots, \mathbf{p}_K$, standard linear blending computes:
-$$\bar{\mathbf{p}} = \sum_{k=1}^K w_k \mathbf{p}_k, \quad \sum_k w_k = 1, \quad w_k \ge 0$$
+When ensembling $K$ diverse prediction vectors $\mathbf{p}_1, \dots, \mathbf{p}_K$ mapped to probit-transformed ranks $z_i = \Phi^{-1}(r_i)$, standard Euclidean convex combinations cut through the interior of the hypersphere rather than staying on its surface:
+$$\left\| \sum_{k=1}^K w_k \mathbf{z}_k \right\|_2 < \sum_{k=1}^K w_k \|\mathbf{z}_k\|_2$$
+This causes **norm shrinkage**: blended scores compress toward the center ($z \approx 0$), muting extreme tail confidence where ROC-AUC concordance is most decisive.
 
-In probit or logit space $z_i = \Phi^{-1}(r_i)$ (where $r_i \in (0, 1)$ is the percentile rank), the vectors $\mathbf{z}_k$ describe directions on an $N$-dimensional manifold. Because standard Euclidean convex combinations cut through the interior of the hypersphere rather than traversing its surface:
-$$\|\bar{\mathbf{z}}\|_2 = \left\| \sum_{k=1}^K w_k \mathbf{z}_k \right\|_2 < \sum_{k=1}^K w_k \|\mathbf{z}_k\|_2$$
-
-This causes **norm shrinkage**: the blended distribution becomes artificially concentrated near the mean ($z \approx 0, p \approx 0.5$), compressing the variance of predictions at the extreme tails (where ROC-AUC concordance is most decisively won or lost).
-
-### 1.2 The Riemannian Unit Hypersphere $\mathbb{S}^{N-1}$
-To eliminate norm shrinkage, we normalize each probit-transformed rank vector to lie on the Riemannian unit hypersphere:
-$$\mathbf{u}_k = \frac{\mathbf{z}_k}{\|\mathbf{z}_k\|_2} \in \mathbb{S}^{N-1} = \left\{ \mathbf{x} \in \mathbb{R}^N : \|\mathbf{x}\|_2 = 1 \right\}$$
-
-The intrinsic Riemannian distance between any two model predictions $\mathbf{u}_a$ and $\mathbf{u}_b$ is the geodesic arc length:
-$$d_{\mathbb{S}}(\mathbf{u}_a, \mathbf{u}_b) = \arccos\left(\mathbf{u}_a^T \mathbf{u}_b\right)$$
-
-### 1.3 The Weighted Fréchet Barycenter (Karcher Mean)
-The optimal consensus ensemble on $\mathbb{S}^{N-1}$ is the **Fréchet barycenter** $\mathbf{u}^*$, defined as the unique minimizer of the weighted sum of squared geodesic distances:
-$$\mathbf{u}^* = \arg\min_{\mathbf{u} \in \mathbb{S}^{N-1}} \sum_{k=1}^K w_k \cdot d_{\mathbb{S}}(\mathbf{u}, \mathbf{u}_k)^2$$
-
-Because $\mathbb{S}^{N-1}$ is a Riemannian manifold, the barycenter cannot be evaluated via simple vector addition. Instead, it is computed via iterative mappings between the manifold and the **tangent space** $T_{\mathbf{u}}\mathbb{S}^{N-1}$:
-1. **Riemannian Logarithmic Map ($\log_{\mathbf{u}}$)**: Projects model $\mathbf{u}_k$ onto the tangent space at current estimate $\mathbf{u}$:
-   $$\mathbf{v}_k = \log_{\mathbf{u}}(\mathbf{u}_k) = \frac{\theta_k}{\sin \theta_k} \left(\mathbf{u}_k - \cos\theta_k \mathbf{u}\right), \quad \text{where } \theta_k = \arccos\left(\mathbf{u}^T \mathbf{u}_k\right)$$
-2. **Tangent Vector Aggregation**:
-   $$\bar{\mathbf{v}} = \sum_{k=1}^K w_k \mathbf{v}_k$$
-3. **Riemannian Exponential Map ($\exp_{\mathbf{u}}$)**: Shoots the tangent vector back onto the hypersphere:
-   $$\mathbf{u}_{\text{next}} = \exp_{\mathbf{u}}(\bar{\mathbf{v}}) = \cos(\|\bar{\mathbf{v}}\|_2) \mathbf{u} + \sin(\|\bar{\mathbf{v}}\|_2) \frac{\bar{\mathbf{v}}}{\|\bar{\mathbf{v}}\|_2}$$
-
-Iterating this mapping converges exponentially fast (typically 3–5 iterations) to the true intrinsic barycenter.
+### 1.2 The Weighted Fréchet Barycenter on $\mathbb{S}^{N-1}$
+Normalize each probit-rank vector onto the unit hypersphere $\mathbf{u}_k = \mathbf{z}_k / \|\mathbf{z}_k\|_2 \in \mathbb{S}^{N-1}$, where geodesic distance is $d_{\mathbb{S}}(\mathbf{u}_a, \mathbf{u}_b) = \arccos(\mathbf{u}_a^T \mathbf{u}_b)$. The weighted **Fréchet barycenter** minimizes $\sum_{k=1}^K w_k\, d_{\mathbb{S}}(\mathbf{u}, \mathbf{u}_k)^2$ via fast iterative tangent-space updates (typically 3–5 iterations):
+1. **Log Map**: $\mathbf{v}_k = \frac{\theta_k}{\sin\theta_k}(\mathbf{u}_k - \cos\theta_k\,\mathbf{u})$ with $\theta_k = \arccos(\mathbf{u}^T \mathbf{u}_k)$.
+2. **Weighted Tangent Mean**: $\bar{\mathbf{v}} = \sum_{k=1}^K w_k \mathbf{v}_k$.
+3. **Exp Map**: $\mathbf{u}_{\text{next}} = \cos(\|\bar{\mathbf{v}}\|_2)\mathbf{u} + \sin(\|\bar{\mathbf{v}}\|_2)\frac{\bar{\mathbf{v}}}{\|\bar{\mathbf{v}}\|_2}$.
 
 ---
 
-## 2. Deterministic Generator Boundary Invariants
+## 2. Guarded Deterministic Boundary Invariant Discovery
 
-In competitions utilizing synthetic data generators (e.g., CTGAN, CopulaGAN, or diffusion generators), the generator often exhibits **hard memory leaks** or **deterministic step-function boundaries** where the true positive probability is strictly $0.0$ or $1.0$ with zero exceptions across hundreds of thousands of rows.
+Some datasets (particularly rule-generated or synthetic benchmarks) contain **strict boundary regions** where the true target rate is empirically $0.0$ or $1.0$ with zero exceptions.
 
-### Identifying Deterministic Rules
-In Kaggle Playground Series S6E9, 4 deterministic generator invariants were uncovered with 100.00% empirical precision (0 errors across 668,665 training rows and 400,000+ pseudo-labeled rows):
-1. **Income Upper Bound:** $\text{Income} \ge \$170{,}537 \implies \text{Target} = 1.0$ (100% Buys, 3,248 test rows)
-2. **Dead-Income Dead-Zone:** $\$31{,}004 \le \text{Income} \le \$41{,}970 \implies \text{Target} = 0.0$ (100% Never Buys, 461 test rows)
-3. **Commute Distance Extinction:** $\text{Daily\_Commute} \ge 83.0\text{ km} \implies \text{Target} = 0.0$ (100% Never Buys, 18 test rows)
-4. **Zero-Subsidy Low-Income Interaction:** $\text{Income} == \$30{,}000 \land \text{Subsidy} == \text{No} \land (\text{Concern} == 1 \lor \text{High Anxiety}) \implies \text{Target} = 0.0$ (100% Never Buys, 6 test rows)
-
-### Enforcing Boundary Rules
-Rather than allowing models to output intermediate probabilities (e.g. $0.85$ or $0.12$) on deterministic rows, enforce hard boundary overrides:
-- Set rows satisfying $1.0$ rules to maximum possible prediction rank ($+\infty$ before ranking).
-- Set rows satisfying $0.0$ rules to minimum possible prediction rank ($-\infty$ before ranking).
-
-This eliminates ranking inversion errors on boundary test cases, providing a guaranteed $+0.00015$ to $+0.00020$ AUC boost.
+### Verification Protocol Before Applying Any Hard Override
+Never hardcode domain guesses without statistical proof. Audit candidate rules strictly inside CV:
+1. Fit shallow, high-`min_samples_leaf` decision trees (depth 1–3) on each training fold to surface candidate pure leaves ($p = 0.0$ or $p = 1.0$).
+2. Require **100% purity across every CV validation fold** (zero exceptions on held-out folds) AND a conservative minimum support count (e.g., $n \ge 50$–$200$, Wilson lower bound $> 0.99$).
+3. Verify positive out-of-fold metric lift when pushing confirmed positive masks to $+\infty$ and confirmed negative masks to $-\infty$ before ranking. *(Skip overrides entirely if any validation exception exists—one false deterministic flip penalizes AUC heavily!)*
 
 ---
 
-## 3. Evaluation Metric Exploitation: Zero-Tie Lexsort (`lexrank`)
+## 3. Zero-Tie Lexicographical Ranking (`lexrank`)
 
-In ROC-AUC evaluation, tied prediction values are assigned the average rank of the tied group:
-$$\text{Concordance Credit} = 0.5 \times \text{Number of Ties}$$
-
-Every tied prediction between a true positive and a true negative costs **$0.5$ of an AUC point**. If a raw model ensemble contains thousands of identical values (due to clipping, rounding, or tree leaf saturation), ROC-AUC suffers severe degradation.
-
-### The Lexsort Resolution
-Never clip or round probabilities. Always break all potential ties using an independent, continuous secondary predictor (such as a deep tabular neural network like **PyTorch RealMLP**):
+Under ROC-AUC, tied prediction values receive only $0.5$ concordance credit. Tree leaf saturation, probability clipping, or rounding can introduce thousands of silent ties. Break all potential ties deterministically using an independent, continuous secondary predictor (e.g., a smooth tabular neural network such as RealMLP or TabM):
 $$\text{order} = \text{np.lexsort}((\text{secondary\_continuous}, \text{primary\_ensemble}))$$
 $$\text{rank}[\text{order}] = 1, 2, \dots, N \implies p_{\text{unique}} = \frac{\text{rank} - 0.5}{N}$$
-
-This mathematical construction guarantees **strictly $N$ unique values in $(0, 1)$** and completely eliminates tie penalties.
+This guarantees strictly $N$ unique values in $(0, 1)$ while preserving the exact primary hierarchy.
 
 ---
 
@@ -79,146 +45,113 @@ This mathematical construction guarantees **strictly $N$ unique values in $(0, 1
 
 ```python
 import numpy as np
-import pandas as pd
 from scipy.stats import norm, rankdata
+
 
 def rank01(x: np.ndarray) -> np.ndarray:
     """Map continuous array to uniform open interval (0, 1)."""
     n = len(x)
     return (rankdata(x) - 0.5) / n
 
+
 def probit(x: np.ndarray, eps: float = 1e-7) -> np.ndarray:
     """Probit (inverse standard normal CDF) transform."""
-    clipped = np.clip(x, eps, 1.0 - eps)
-    return norm.ppf(clipped)
+    return norm.ppf(np.clip(x, eps, 1.0 - eps))
+
 
 def frechet_barycenter_hypersphere(
     predictions_list: list[np.ndarray],
     weights: list[float] | None = None,
     max_iter: int = 15,
-    tol: float = 1e-9
+    tol: float = 1e-9,
 ) -> np.ndarray:
     """
-    Computes the weighted Frechet barycenter (Karcher mean) of multiple
-    model prediction vectors on the Riemannian unit hypersphere S^{N-1}.
+    Compute the weighted Frechet barycenter (Karcher mean) of model prediction
+    vectors on the Riemannian unit hypersphere S^{N-1}.
     """
     K = len(predictions_list)
     N = len(predictions_list[0])
-    
-    if weights is None:
-        weights = [1.0 / K] * K
-    weights = np.array(weights, dtype=np.float64)
-    weights /= weights.sum()
 
-    # Step 1: Transform to uniform percentiles, probit, and normalize to S^{N-1}
+    if weights is None:
+        w = np.full(K, 1.0 / K, dtype=np.float64)
+    else:
+        w = np.asarray(weights, dtype=np.float64)
+        w = w / w.sum()
+
     U = np.empty((K, N), dtype=np.float64)
     for k in range(K):
-        r = rank01(predictions_list[k])
-        z = probit(r)
+        z = probit(rank01(predictions_list[k]))
         norm_z = np.linalg.norm(z)
-        if norm_z == 0:
+        if norm_z == 0.0:
             raise ValueError(f"Model {k} has zero variance in probit space.")
         U[k] = z / norm_z
 
-    # Step 2: Initialize barycenter at normalized Euclidean weighted sum
-    u = np.tensordot(weights, U, axes=(0, 0))
+    u = np.tensordot(w, U, axes=(0, 0))
     u /= np.linalg.norm(u)
 
-    # Step 3: Riemannian Gradient Descent in Tangent Space
-    for iteration in range(max_iter):
+    for _ in range(max_iter):
         V_bar = np.zeros(N, dtype=np.float64)
         for k in range(K):
-            cos_theta = np.clip(np.dot(u, U[k]), -1.0, 1.0)
+            cos_theta = float(np.clip(np.dot(u, U[k]), -1.0, 1.0))
             theta = np.arccos(cos_theta)
-            
-            if np.abs(theta) < 1e-12:
+            if abs(theta) < 1e-12:
                 continue
-            
-            # Riemannian Logarithmic map: Log_u(U[k])
             v_k = (theta / np.sin(theta)) * (U[k] - cos_theta * u)
-            V_bar += weights[k] * v_k
+            V_bar += w[k] * v_k
 
         norm_v = np.linalg.norm(V_bar)
         if norm_v < tol:
             break
-
-        # Riemannian Exponential map: Exp_u(V_bar)
         u = np.cos(norm_v) * u + np.sin(norm_v) * (V_bar / norm_v)
         u /= np.linalg.norm(u)
 
     return u
 
+
+def apply_verified_boundary_masks(
+    preds: np.ndarray,
+    pos_mask: np.ndarray | None = None,
+    neg_mask: np.ndarray | None = None,
+    extreme_val: float = 1e9,
+) -> np.ndarray:
+    """Push CV-verified 100%-pure deterministic boundary rows to +/- extreme ranks."""
+    out = np.asarray(preds, dtype=np.float64).copy()
+    if pos_mask is not None:
+        out[np.asarray(pos_mask, dtype=bool)] = extreme_val
+    if neg_mask is not None:
+        out[np.asarray(neg_mask, dtype=bool)] = -extreme_val
+    return out
+
+
 def lexrank(primary: np.ndarray, secondary: np.ndarray) -> np.ndarray:
     """
-    Strict zero-tie lexicographical rank transform.
-    Primary predictions determine ordering; secondary continuous predictions
-    break all primary ties without disturbing primary hierarchy.
+    Zero-tie lexicographical rank transform.
+    Primary predictions govern ordering; continuous secondary predictions break ties.
     """
     N = len(primary)
     order = np.lexsort((secondary, primary))
     ranks = np.empty(N, dtype=np.float64)
     ranks[order] = np.arange(1, N + 1, dtype=np.float64)
     return (ranks - 0.5) / N
-
-def enforce_ctgan_invariants(df_test: pd.DataFrame, preds: np.ndarray) -> np.ndarray:
-    """
-    Enforces deterministic CTGAN generator memory leak rules.
-    Rows guaranteed to be 1.0 are pushed to +inf; rows guaranteed to be 0.0
-    are pushed to -inf prior to final ranking.
-    """
-    preds_out = preds.copy()
-
-    # Rule 1: Income >= $170,537 -> 100% Positive
-    mask_high_inc = df_test["Annual_Income_USD"] >= 170537
-    preds_out[mask_high_inc.to_numpy()] = 1e9
-
-    # Rule 2: $31,004 <= Income <= $41,970 -> 100% Negative
-    mask_dead_inc = (df_test["Annual_Income_USD"] >= 31004) & (df_test["Annual_Income_USD"] <= 41970)
-    preds_out[mask_dead_inc.to_numpy()] = -1e9
-
-    # Rule 3: Commute >= 83 km -> 100% Negative
-    mask_high_comm = df_test["Daily_Commute_km"] >= 83.0
-    preds_out[mask_high_comm.to_numpy()] = -1e9
-
-    # Rule 4: Income == 30000 & No Subsidy & (Concern 1 or High Anxiety) -> 100% Negative
-    mask_rule4 = (
-        (df_test["Annual_Income_USD"] == 30000) &
-        (df_test["Has_Gov_Incentives_or_Subsidies"].isin(["No", 0, "0"])) &
-        ((df_test["Environmental_Concerns_Score"] == 1) | (df_test["Daily_Commute_km"] > 70))
-    )
-    preds_out[mask_rule4.to_numpy()] = -1e9
-
-    return preds_out
 ```
 
 ---
 
-## 5. End-to-End Pipeline Integration Example
+## 5. End-to-End Pipeline Pattern
 
 ```python
-# Load candidate submissions and continuous neural tie-breaker
-sub_anchor = pd.read_csv("submissions/pacman_champion.csv")["Will_Buy_EV"].to_numpy()
-sub_souvik = pd.read_csv("submissions/souvik_frechet.csv")["Will_Buy_EV"].to_numpy()
-sub_goodpjw = pd.read_csv("submissions/goodpjw_residual_stack.csv")["Will_Buy_EV"].to_numpy()
-sub_gen10 = pd.read_csv("submissions/gen10_meta_engine.csv")["Will_Buy_EV"].to_numpy()
-sub_realmlp = pd.read_csv("submissions/realmlp_continuous.csv")["Will_Buy_EV"].to_numpy()
-df_test = pd.read_csv("data/test.csv")
-
-# 1. Compute Hypersphere Geodesic Centroid
-barycenter_u = frechet_barycenter_hypersphere(
-    predictions_list=[sub_anchor, sub_souvik, sub_goodpjw, sub_gen10],
-    weights=[0.65, 0.15, 0.10, 0.10]
+# Tune weights strictly on OOF CV before applying to test predictions
+barycenter_test = frechet_barycenter_hypersphere(
+    predictions_list=[test_stack_a, test_stack_b, test_stack_c],
+    weights=[0.50, 0.30, 0.20],
 )
 
-# 2. Enforce Hard CTGAN Generator Invariant Rules
-barycenter_rules = enforce_ctgan_invariants(df_test, barycenter_u)
+# Optional: apply ONLY rules verified with 0 errors across all CV folds
+# barycenter_test = apply_verified_boundary_masks(barycenter_test, pos_mask=pos_m, neg_mask=neg_m)
 
-# 3. Apply Zero-Tie Lexicographical Ranking via RealMLP Secondary
-final_preds = lexrank(primary=barycenter_rules, secondary=sub_realmlp)
+# Break any remaining ties using an independent smooth continuous model (e.g., RealMLP)
+final_preds = lexrank(primary=barycenter_test, secondary=test_continuous_nn)
 
-# 4. Save and Validate Submission
-df_sub = pd.DataFrame({"id": df_test["id"], "Will_Buy_EV": final_preds})
 assert len(np.unique(final_preds)) == len(final_preds), "Ties detected!"
-assert (final_preds > 0).all() and (final_preds < 1).all(), "Values out of bounds!"
-df_sub.to_csv("submission_apex_frechet_shakeup_fortress.csv", index=False)
+assert (final_preds > 0.0).all() and (final_preds < 1.0).all(), "Predictions out of (0, 1)!"
 ```

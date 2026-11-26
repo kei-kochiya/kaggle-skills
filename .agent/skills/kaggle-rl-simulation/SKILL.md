@@ -3,77 +3,63 @@ name: kaggle-rl-simulation
 description: Use for Kaggle game and simulation competition kickoff, heuristic/search/neural agent development, replay imitation, RL training, simulator validation and submission evaluation.
 ---
 
-# Simulation competition workflow
+# Simulation Competition Workflow
 
-Choose an approach using the game, available teachers, measured outcomes, hardware and deadline. A heuristic, search planner, learned policy or hybrid can be appropriate. Preserve a working baseline while testing improvements.
+Choose an approach using the game contract, available demonstrations, measured outcomes, hardware, and deadline. A heuristic, bounded search planner, behavioral cloning (BC) policy, reinforcement learning (RL) agent, or hybrid can be optimal depending on episode structure. Preserve a working baseline while testing improvements.
 
 ## Routing
 
-- For a new competition or a request to transfer past lessons, read the [simulation starter and kickoff prompt](../../../Handbook/reinforcement-learning/simulation-competition-starter.md). It explains the first deliverables and which assumptions must be re-derived.
-- For advanced Kaggriculture reproduction or tape-to-learning work, read [references/kaggriculture.md](references/kaggriculture.md). Its source pins and controller semantics take precedence over unrelated examples.
-- Read detailed references below only when the current stage needs them. Their numerical settings and scaling examples are game-specific.
+- For a new competition or a request to transfer past lessons, read the [simulation starter and kickoff prompt](../../../Handbook/reinforcement-learning/simulation-competition-starter.md) to establish first deliverables and identify which assumptions must be re-derived.
+- Load detailed references below only when the current stage needs them. All dimensions, batch sizes, horizons, and serving limits must be derived from the active competition's contract and local profiling.
 
-## Establish a runnable foundation
+## 1. Establish a Runnable Foundation
 
-1. Inspect official rules, source/configuration, scoring and submission constraints. Record environment versions and source identities. Determine player count, allowed observations, randomness, action execution order, illegal-action handling and terminal behavior.
-2. Run an official starter or simple heuristic through a complete game. Save its source, replay, terminal result and latency. A read-only research request does not imply starting a training campaign.
-3. Build a repeatable evaluator with active, distinct opponent families when applicable. Use development and final held-out scenario panels. Swap seats for two-player games and use appropriate assignments for multiplayer or single-player tasks.
-4. Measure simulation, encoding, inference, transfers and updates separately. Check host RAM, GPU memory and the deployment CPU budget. Project wall time from measured throughput before scaling.
-5. Package a simple baseline locally early enough to check entry points, dependencies and target limits. Local success does not prove acceptance or identical time accounting in the official runtime.
+1. **Game Contract**: Inspect official rules, source/configuration, scoring, and submission constraints. Record environment versions and source identities. Verify player count, visible vs. private observations, randomness/RNG semantics, action execution order, illegal-action handling, and terminal/round-reset behavior.
+2. **Baseline & Replay**: Run an official starter or simple heuristic through a complete game. Save its source, replay, terminal result, and per-turn latency. A read-only research request does not imply starting a training campaign.
+3. **Repeatable Evaluator**: Build an evaluation harness with distinct opponent families and separate development vs. final held-out scenario panels. Use paired-seed seat swaps for two-player games and balanced seat rotations for multiplayer games.
+4. **Profile Bottlenecks**: Measure simulation, observation encoding, model inference, host-to-device transfer, and gradient update costs separately. Check host RAM, GPU VRAM, and deployment CPU limits before scaling.
+5. **Early Packaging Check**: Package a simple baseline locally early enough to verify entry points, dependencies, archive size, and startup/turn latency. Local success does not guarantee identical CPU throttling in the official runtime.
 
-Choose useful work within the user's scope and compute budget. Do not replace a research task with unrequested long training, or assume a repository contains its authors' weights and datasets.
+## 2. Choose the Next Experiment
 
-## Choose the next experiment
+| Measured Evidence | Candidate Direction |
+| :--- | :--- |
+| Strong rules or public replays already exist | Improve the heuristic directly or train a small BC policy on valid demonstrations |
+| Micro-logistics or pathing causes deadlocks/collisions | Hierarchical Macro-BC (periodic high-level intent) + deterministic micro compiler |
+| Opening has high branching entropy, endgame is mathematical | Split-horizon hybrid: neural BC opening + combinatorial/search endgame planner |
+| Short-horizon forward simulation is fast and deterministic | Bounded test-time lookahead search; validate simulator parity and latency |
+| Good teachers exist, but rewards are sparse & actions complex | Executed-label BC → full-game validation → bounded RL fine-tuning if helpful |
+| Simple actions and informative rewards | Direct RL probe with a compact model |
+| Compact policy saturates on spatial/relational reasoning | Compare grid CNN, pooled MLP, graph/edge-attention, or entity Transformer |
+| Simulation or transfer dominates wall time | Optimize the measured bottleneck (Rust/C++/JAX); enforce replay parity gates |
 
-| Evidence | Candidate direction |
-| --- | --- |
-| Strong rules/tapes already work | Improve the heuristic or use valid demonstrations for BC |
-| Micro-logistics/routing causes collisions | Hierarchical Macro-BC (dawn intent) + deterministic micro compiler |
-| Opening has high entropy, endgame is mathematical | Split-horizon hybrid: Neural BC opening + combinatorial/search endgame planner |
-| Short-horizon planning is affordable | Bounded search; validate simulator fidelity and serving cost |
-| Good teachers, sparse reward, complex actions | Small BC policy, complete-game validation, then an RL probe if useful |
-| Simple actions and informative reward | Consider direct RL with a small model |
-| Small policy is limited by representation | Compare compact grid, pooled/entity or graph models according to the game |
-| Simulation or transfer dominates cost | Optimize the measured bottleneck; custom engines need parity checking |
+## 3. Demonstration & Actor-Input Invariants
 
-Entity Transformers, compiled Rust/JAX simulators, PPO, opponent leagues and quantization are options. Model size, optimizer, rollout length, discount and serving limits are not universal defaults. An original tape's schedule may break when learned choices change resources; use compatible plans or a reactive executor.
+- **Explicit Provenance & Alignment**: Record teacher identity, episode ID, player seat, and version. Derive observation-to-action alignment strictly from the active environment's replay schema.
+- **Episode-Level Splits**: Keep entire episodes (all seats and turns) inside one train or validation split. Deduplicate repeated episode/seat rows.
+- **Executed-State Labels Over Raw Orders**: In environments where the engine silently drops or repairs invalid/conflicting commands, train BC on the **executed state transitions** actually applied by the engine rather than raw submitted orders. Verify `encode → decode → engine` parity on every retained replay.
+- **Conditioning Over Hard Filtering**: Instead of discarding good-but-not-top trajectories, condition the policy on `(Teacher/Style ID, Recency, Outcome)` with conditioning dropout during training, and prompt at inference with `(Top Style, Latest Recency, Win)`.
+- **Strict Visibility & Relative Perspective**: Feed the actor only observations available at inference. In batched multi-player forward passes, keep private information isolated per seat. Encode **relative turn-order / active-perspective indicators** rather than raw physical seat indices whenever turn order can rotate across rounds.
+- **Sequential Resource Reservation**: When multiple units/slots compete for shared resources within one turn, reserve resources in the engine's exact execution order (or use a cross-decision corrector).
 
-## Demonstration and actor-input invariants
+## 4. Learning, RL Stability & Promotion
 
-- Identify the teacher, episode, player position and source version explicitly. Derive observation/action alignment from this game's replay format; Kaggriculture's offset is not a generic rule.
-- Keep entire episodes/scenarios within one training or validation split. Deduplicate repeated game/seat rows and account for shared teacher lineage.
-- **Executed-Action Invariant (The Farmcore Principle)**: In simulations where the engine silently drops or rejects invalid actions, train strictly on state changes the engine applied rather than raw player orders. Cloning submitted orders trains the policy to emit empty/phantom actions.
-- Preserve proposed, repaired and executed actions when they differ. Define labels using the actual resolver and action vocabulary; filter impossible/unexecuted commands or represent their semantics explicitly.
-- **Conditioning over Filtering**: Condition on (Team/Style, Recency, Outcome). At test time, prompt the policy with Style = TopTeam, Recency = Max, Outcome = Win.
-- Train the actor from the observation it can receive at inference. Batched multi-player evaluation must keep each actor's private information isolated. Forecast features may use visible evidence and known deterministic dynamics, not hidden future randomness.
-- Verify that learned choices affect emitted actions and that conditional decisions reserve shared resources in execution order. Legality alone does not establish strategic usefulness.
+- **Full-Game BC Evaluation**: Never rely solely on held-out cross-entropy loss (often dominated by frequent `PASS`/idle actions). Evaluate BC policies in complete unseen games and track rare high-leverage decisions separately.
+- **Critic Pre-Warm & Horizon Alignment**: When transitioning from BC to actor-critic RL, test freezing the actor while pre-warming the value head first. Align reward, discount $\gamma$, and GAE $\lambda$ with the true horizon and termination rules; distinguish true episode end from rollout truncation.
+- **Exact PPO Support Consistency**: Store sampled action IDs, old log-probabilities, conditional masks, temperatures, and forced-action flags during rollouts. Recompute log-probabilities under identical masks before updating (verify ratio $\approx 1.0$ on step 0). Exclude post-sampling deterministic overrides from actor log-prob gradients while preserving their state transitions for the critic.
+- **External & Paired-Seed Promotion**: Never trust self-play win rates alone—even two-player zero-sum games can cycle, and homogeneous self-play misses aggressive out-of-distribution heuristics. Gate promotions via paired-seed seat-swapped matches against both the incumbent champion and an independent opponent panel.
 
-## Learning and improvement
+## 5. Evaluate & Retain Evidence
 
-Start with a feasible model and data subset. Inspect host expansion and batch memory, not just compressed dataset sizes. BC success requires complete held-out games and useful rare decisions as well as supervised loss. Student mistakes can move play outside the teacher's recorded states.
+- Track the competition's primary outcome metric alongside operational diagnostics: illegal/dropped action rate, resource waste, terminal state efficiency, latency percentiles, and overage usage.
+- Require exact discrete-rule parity (including RNG state and tie-breaking/container ordering) and explicit float tolerances before trusting any accelerated custom simulator.
+- Benchmark the exact packaged submission under CPU/RAM/time caps. Apply quantization, observation compaction, pure-NumPy serving, or latency circuit-breakers only when measured limits demand them, and re-verify win rate afterward.
 
-For actor-critic RL, decide whether a separate value-fitting stage is useful before full updates. Frozen-actor critic fitting is Kaggriculture's adopted procedure, not mandatory for every algorithm. Align rewards, discounting and returns with the actual score/horizon; preserve terminal outcomes and handle collection cutoffs correctly.
+## Detailed References & Case Studies
 
-For PPO, retain sampled action IDs, old log probabilities, values, conditional masks, temperatures and any forced-factor flags. Before an update, recomputation should agree with collection and the ratio should be approximately one. Use the ratio/clipped objective; plain `-log_probability * advantage` is not PPO-Clip. Account explicitly for deterministic controllers instead of treating forced replacements as sampled choices.
-
-Distinguish BC teachers from neural probability-distribution references used for KL regularization. An initial random model is not a competent teacher. Use a fixed reference or promotion scheme only when justified by the experiment; there is no universal promotion win rate.
-
-Diagnose failures by opponent/scenario/phase. Improve a teacher or controller for those cases, collect targeted demonstrations when useful, and compare the resulting learner against the preserved evaluation panel. Teacher refinement, search, more data and architecture growth are separate experiments. Two-player games can also have non-transitive strategies; self-play alone does not establish broad strength.
-
-## Evaluate and retain evidence
-
-Track the competition's actual outcome metric plus relevant diagnostics: action failures, waste, terminal inventory, survival, latency or other game-specific indicators. Preserve seed/scenario clusters and player assignments when estimating uncertainty. One mirror match, own earnings against PASS, or a public rating snapshot is insufficient evidence of generalization.
-
-Verify state, reward, terminal and observation-visibility parity before trusting a custom simulator. Require exact discrete-rule agreement and explicit floating-point tolerances; include boundary cases appropriate to the game.
-
-Benchmark the exact packaged controller under target-like conditions. Apply compression, search budgets or fallback behavior when measured limits call for them, and retest outcome quality after those changes. Keep the strongest verified agent and record source/configuration, data, weights, commands, measured costs and results separately.
-
-## Detailed references and case studies
-
-- [Simulator acceleration](references/simulator_acceleration.md): Rust/JAX and parity patterns; use after profiling identifies a need.
-- [Model architectures](references/model_architectures.md): entity/relational representations and action heads; verify visibility and serving cost before adopting.
-- [Training stability](references/rl_training_stability.md): example PPO, teacher and league recipes; choose reward/horizon settings from the game.
-- [Quantization and serving](references/submission_quantization_serving.md): example compression/search/fallback implementations; derive current submission limits first.
-- [Kaggriculture](../../../Handbook/reinforcement-learning/kaggriculture.md): Grandmaster handbook covering all 4 gold medal archetypes (Executed-Label BC, Macro-BC + Day Compiler, Hybrid Opening + Rust Planner, BC → Pre-Warm → PPO), fast engines (kagsim, Rust 29.8k g/s), and inference guardrails.
-- [Maze Crawler](../../../Handbook/reinforcement-learning/maze-crawler.md): heuristic targeting and self-play blind spots.
-- [Orbit Wars](../../../Handbook/reinforcement-learning/orbit-wars.md): historical simulation scaling, neural architectures and serving examples.
+- [BC, Replay Engineering & Promotion Gating](references/bc_replay_and_gating.md): Executed-state replay verification, style/recency/outcome conditioning, one-pass draft+corrector, checkpoint soups, sequential conflict masking, hard-example replay, pure-NumPy serving, and paired-seed gating.
+- [Simulator Acceleration & Parity](references/simulator_acceleration.md): Rust (PyO3/Rayon), C++, and pure-JAX vectorized environments, zero-copy pinned transfers, spatial broad-phase filtering, and automated replay parity harnesses.
+- [Neural Policy & Value Architectures](references/model_architectures.md): Entity Transformers, global scratch tokens, single-pass multi-player inference, pointer-attention & discretized logistic-mixture heads, relational edge-attention, 2D RoPE, and deterministic forward-horizon projections.
+- [RL Training Stability & League Play](references/rl_training_stability.md): Stabilized PPO, Polyak/KL teacher anchoring, anti-stall reward shaping, frozen historical pools, and adversarial league exploiters.
+- [Quantization, CPU Serving & Fallback Cascades](references/submission_quantization_serving.md): Grouped NF4-LSQ compression, streaming dequantization, dynamic int8 CPU serving, entity compaction with safety invariants, overage circuit-breakers, lookahead search, and runtime rejection/round-reset guards.
+- Case Studies: [`Kaggriculture`](../../../Handbook/reinforcement-learning/kaggriculture.md) · [`Orbit Wars`](../../../Handbook/reinforcement-learning/orbit-wars.md) · [`Maze Crawler`](../../../Handbook/reinforcement-learning/maze-crawler.md) · [`Pokémon TCG`](../../../Handbook/reinforcement-learning/pokemon-tcg-playground.md)

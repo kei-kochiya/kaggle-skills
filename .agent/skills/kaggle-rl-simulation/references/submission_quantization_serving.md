@@ -1,287 +1,200 @@
-# Submission Quantization, CPU Serving & Fallback Cascades 💾
+# Submission Quantization, CPU Serving & Runtime Guardrails
 
-**Scope:** Derive limits from the new competition's official runtime documentation and benchmark the exact package. The sizes, timing bank, CPU assumptions and compression results below are historical examples from particular solutions, not platform-wide requirements. Read the [simulation workflow](../SKILL.md) first; small models may not need quantization or a fallback cascade. Example code needs adaptation and outcome/latency checks before use.
+Competitive simulation runtimes typically enforce hard constraints on **compressed archive size**, **container RAM**, **per-turn CPU latency**, and **shared match overage clocks**, often on a single throttled x86 CPU core.
 
-The serving examples below address constraints such as:
-1. **Archive Size Constraint**: Strict $\le 100\text{ MiB}$ limit for `submission.tar.gz`.
-2. **Turn Latency Budget**: $1.0\text{ second}$ per turn, plus a $60.0\text{ second}$ overage bank for the entire match.
-3. **Execution Environment**: A single, throttled x86 CPU core without GPU acceleration.
-
-This reference guide establishes the engineering playbook to compress **100M–200M parameter models into $<96\text{ MiB}$**, execute within **$<500\text{ ms}$ on CPU**, and implement **fail-safe fallback cascades**.
+**Scope:** Always read the active competition's official runtime limits and benchmark the exact packaged artifact first. Compact models may not need quantization or fallback tiers; apply each optimization only when profiling proves it necessary, and re-verify win rate afterward.
 
 ---
 
 ## 1. Multi-Tier Serving Architecture
 
-```
-                       SUBMISSION DEPLOYMENT ARCHITECTURE
-                       
- [Offline Checkpoint Compression]
-  • 200M Model (800MiB fp32) ──> NF4-LSQ Group 128 ──> 90.7MiB Artifact
-  • 5M Fallback Model (20MiB fp32) ──> fp16 ──> 10.1MiB Artifact
-  • Package into submission.tar.gz (<100MiB Total)
-                               |
-                               v (Kaggle Agent Startup on CPU)
- [Streaming Dequantization]
-  • Streams tensors one-by-one into CPU memory
-  • Avoids materializing 800MiB state-dict simultaneously (prevents OOM)
-                               |
-                               v
- [Runtime Dynamic int8 Quantization]
-  • torch.ao.quantization.quantize_dynamic(model, {nn.Linear}, dtype=torch.qint8)
-  • Drops CPU latency from 2,500ms -> 450ms per step
-                               |
-                               v
- [Turn Execution & Latency Circuit Breaker]
-  • Compact observation: Filter out fleets < 3 ships
-  • Monitor: remaining_overage = obs["remainingOverageTime"]
-                               |
-               +---------------+---------------+
-               |                               |
-        overage >= 1.0s                 overage < 1.0s
-               |                               |
-               v                               v
-     [200M Heavy Model]              [5M FALLBACK MODEL]
-     (Full tactical depth)           (Sub-30ms emergency conversion)
+```text
+  [Offline Packing]
+   • Primary Model  ──> Grouped NF4-LSQ (4-bit weights + fp16 group scales)
+   • Fallback Model ──> Compact fp16/int8 policy or fast deterministic heuristic
+                                |
+                                v (Container Startup)
+  [Streaming Tensor-by-Tensor Dequantization]
+   • Avoids peak-RAM OOM from materializing a full fp32 state_dict copy
+                                |
+                                v
+  [Runtime Dynamic int8 Linear Inference (CPU)]
+   • Quantizes nn.Linear layers to qint8; keeps output heads in fp32
+                                |
+                                v (Every Turn)
+  [Runtime Safety Layer]
+   • Round-boundary state reset (for multi-round / Best-of-N matches)
+   • Observation compaction with survival invariants
+   • Overage circuit-breaker (swap to fast fallback when clock < threshold)
+   • Rejection / re-presentation detector + zero-forfeit try/except guard
 ```
 
 ---
 
-## 2. Checkpoint Compression: Grouped NormalFloat (NF4/NF5-LSQ)
+## 2. Grouped NormalFloat Compression (NF4-LSQ) & Streaming Load
 
-Standard uniform 4-bit integer quantization (INT4) causes severe degradation when applied to deep transformer attention weights. NormalFloat (NF4/NF5) maps weights to the quantiles of a standard normal distribution $\mathcal{N}(0, 1)$, maximizing information density.
-
-### 2.1 Grouped NormalFloat with Least-Squares Refinement (LSQ)
-1. Reshape each 2D weight matrix into independent blocks of $G = 128$ consecutive elements: $\mathbf{w} \in \mathbb{R}^{128}$.
-2. Compute the initial block scale:
-   $$s_0 = \frac{\max_{i} |w_i|}{q_{\max}}$$
-3. Refine the scale using **Least-Squares Optimization (LSQ)** over the 16-point NormalFloat codebook $\mathcal{C}$:
-   $$s^* = \arg\min_s \sum_{i=1}^{128} \left( w_i - s \cdot \text{quantize}(w_i / s, \, \mathcal{C}) \right)^2$$
-4. Store the 4-bit indices (2 values packed per byte) and one fp16 scale per 128-element group.
+Uniform 4-bit integer quantization degrades deep attention weights sharply. Mapping weights to 16 standard-normal quantiles (**NF4**) per block of $G = 128$ weights with **Least-Squares (LSQ) scale refinement** achieves ~7–8× size compression while preserving policy quality:
 
 ```python
-# python/owl/checkpoint_quantization.py
-import torch
 import numpy as np
+import torch
 
-# 16-point NormalFloat 4 codebook quantiles
 NF4_CODEBOOK = torch.tensor([
     -1.0, -0.6961928, -0.52507305, -0.39491749,
     -0.28444138, -0.18477343, -0.09105004, 0.0,
     0.0795803, 0.1609302, 0.2461123, 0.33791524,
-    0.44070983, 0.562617, 0.72295684, 1.0
+    0.44070983, 0.562617, 0.72295684, 1.0,
 ], dtype=torch.float32)
 
-def quantize_nf4_group128_lsq(weight_2d: torch.Tensor, group_size: int = 128):
+def quantize_nf4_lsq(weight_2d: torch.Tensor, group_size: int = 128):
     orig_shape = weight_2d.shape
-    flat = weight_2d.flatten()
-    
-    # Pad to group size multiple
+    flat = weight_2d.detach().float().flatten()
     pad_len = (group_size - (flat.numel() % group_size)) % group_size
     if pad_len > 0:
-        flat = torch.cat([flat, torch.zeros(pad_len, dtype=flat.dtype)])
-        
+        flat = torch.cat([flat, torch.zeros(pad_len, dtype=flat.dtype, device=flat.device)])
+
     groups = flat.view(-1, group_size)
-    
-    # 1. Initial scale estimate
-    max_abs = torch.max(torch.abs(groups), dim=1, keepdim=True).values
-    scales = torch.clamp(max_abs, min=1e-8)
-    
-    # 2. Vectorized nearest-neighbor codebook lookup
-    normed = groups / scales
-    diffs = torch.abs(normed.unsqueeze(-1) - NF4_CODEBOOK.to(normed.device))
-    codes = torch.argmin(diffs, dim=-1) # (N_groups, 128) in 0..15
-    
-    # 3. Least-Squares Scale Refinement
-    q_vals = NF4_CODEBOOK[codes].to(normed.device)
-    dot_wq = torch.sum(groups * q_vals, dim=1, keepdim=True)
-    dot_qq = torch.sum(q_vals * q_vals, dim=1, keepdim=True)
-    scales_lsq = torch.clamp(dot_wq / torch.clamp(dot_qq, min=1e-8), min=1e-8).to(torch.float16)
-    
-    # Pack two 4-bit nibbles per byte
+    scales = torch.clamp(groups.abs().amax(dim=1, keepdim=True), min=1e-8)
+
+    cb = NF4_CODEBOOK.to(groups.device)
+    codes = torch.argmin((groups / scales).unsqueeze(-1).sub(cb).abs(), dim=-1)
+    q_vals = cb[codes]
+
+    # Least-squares optimal per-group scale
+    dot_wq = (groups * q_vals).sum(dim=1, keepdim=True)
+    dot_qq = torch.clamp((q_vals * q_vals).sum(dim=1, keepdim=True), min=1e-8)
+    scales_lsq = torch.clamp(dot_wq / dot_qq, min=1e-8).to(torch.float16)
+
     codes_np = codes.cpu().numpy().astype(np.uint8)
-    packed_bytes = (codes_np[:, 0::2] << 4) | (codes_np[:, 1::2] & 0x0F)
-    
+    packed = (codes_np[:, 0::2] << 4) | (codes_np[:, 1::2] & 0x0F)
     return {
-        "packed_codes": packed_bytes.tobytes(),
+        "packed_codes": packed.tobytes(),
         "scales_fp16": scales_lsq.cpu().numpy().tobytes(),
         "orig_shape": orig_shape,
-        "pad_len": pad_len
+        "pad_len": pad_len,
+        "group_size": group_size,
     }
-```
 
-### 2.2 Streaming Dequantization at Agent Startup
-Kaggle evaluation containers enforce strict RAM quotas (~4–8 GiB). Loading an 800 MiB fp32 checkpoint all at once can trigger an out-of-memory SIGKILL. **Stream-dequantize tensor by tensor directly into the instantiated model parameters**:
+def decode_nf4_lsq(packed_codes: bytes, scales_fp16: bytes, orig_shape, pad_len: int, group_size: int = 128):
+    packed = np.frombuffer(packed_codes, dtype=np.uint8).reshape(-1, group_size // 2)
+    codes = np.empty((packed.shape[0], group_size), dtype=np.int64)
+    codes[:, 0::2] = (packed >> 4) & 0x0F
+    codes[:, 1::2] = packed & 0x0F
+    scales = torch.from_numpy(np.frombuffer(scales_fp16, dtype=np.float16).astype(np.float32)).unsqueeze(1)
+    vals = (NF4_CODEBOOK[torch.from_numpy(codes)] * scales).flatten()
+    if pad_len > 0:
+        vals = vals[:-pad_len]
+    return vals.view(orig_shape)
 
-```python
-def load_quantized_checkpoint_streaming(model: torch.nn.Module, qpack_path: str):
+def load_quantized_streaming(model: torch.nn.Module, qpack_path: str):
+    """Dequantize tensor-by-tensor directly into model buffers to cap startup RAM."""
     qdata = torch.load(qpack_path, map_location="cpu")
-    
     with torch.no_grad():
         for name, param in model.named_parameters():
             if name in qdata:
-                tensor_dict = qdata[name]
-                # Dequantize directly into preallocated param buffer
-                dequantized = decode_nf4_lsq(
-                    tensor_dict["packed_codes"],
-                    tensor_dict["scales_fp16"],
-                    tensor_dict["orig_shape"],
-                    tensor_dict["pad_len"]
-                )
-                param.copy_(dequantized)
+                d = qdata[name]
+                param.copy_(decode_nf4_lsq(d["packed_codes"], d["scales_fp16"], d["orig_shape"], d["pad_len"], d["group_size"]))
 ```
 
 ---
 
-## 3. Runtime CPU Optimization & Latency Guardrails
+## 3. CPU Inference Speedup & Observation Compaction
 
-### 3.1 Dynamic int8 Linear Inference
-Once the model is reconstructed on CPU, convert all linear layers to signed int8 using PyTorch's native dynamic quantization:
+### 3.1 Dynamic `int8` Linear Quantization (Keep Heads FP32)
+Apply PyTorch dynamic `int8` quantization to trunk `nn.Linear` layers after loading (often a `3×–6×` CPU latency speedup), while keeping final policy/value output heads in `fp32` to preserve logit precision:
 
 ```python
 import torch.ao.quantization as quantization
 
-def optimize_model_for_cpu_serving(model: torch.nn.Module):
+def optimize_trunk_for_cpu(model: torch.nn.Module):
     model.eval()
-    
-    # Quantize only linear layers, leaving embeddings and LayerNorms intact
-    quantized_model = quantization.quantize_dynamic(
-        model,
-        {torch.nn.Linear},
-        dtype=torch.qint8
-    )
-    return quantized_model
+    return quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
 ```
-*Impact*: Reduces 200M forward latency from **2,500ms down to 420ms** on an x86 Intel/AMD CPU.
 
-### 3.2 Observation Compaction & Fleet Pruning
-Quadratic attention $\mathcal{O}(L^2)$ explodes when games accumulate hundreds of tiny fleets. Filter minor fleets during observation preprocessing:
+### 3.2 Entity Compaction with Survival Invariants
+Quadratic self-attention $\mathcal{O}(L^2)$ can spike CPU latency when minor transient entities proliferate. If you prune low-importance entities below a threshold, **always enforce a per-player survival invariant** so no active player is erroneously treated as eliminated:
 
 ```python
-def compact_observation(raw_obs, min_fleet_size=3):
-    planets = raw_obs["planets"]
-    fleets = raw_obs["fleets"]
-    
-    # Filter fleets smaller than threshold
-    valid_fleets = [f for f in fleets if f["ships"] >= min_fleet_size]
-    
-    # SAFETY INVARIANT: Never eliminate a player who only has small fleets left
-    player_fleet_counts = {}
-    for f in fleets:
-        player_fleet_counts[f["owner"]] = player_fleet_counts.get(f["owner"], 0) + 1
-        
-    for p_id, count in player_fleet_counts.items():
-        # If player has no planets and no fleets survived filter, keep their largest fleet
-        if not any(p["owner"] == p_id for p in planets):
-            if not any(f["owner"] == p_id for f in valid_fleets):
-                p_fleets = sorted([f for f in fleets if f["owner"] == p_id], key=lambda x: -x["ships"])
-                if p_fleets:
-                    valid_fleets.append(p_fleets[0])
-                    
-    raw_obs["fleets"] = valid_fleets
-    return raw_obs
+def compact_entities(entities, primary_owners, min_weight, weight_key="strength", owner_key="owner"):
+    kept = [e for e in entities if e[weight_key] >= min_weight]
+    active_owners = {e[owner_key] for e in entities}
+    kept_owners = {e[owner_key] for e in kept} | set(primary_owners)
+
+    # Safety invariant: preserve the strongest entity for any owner with no other presence
+    for owner in active_owners - kept_owners:
+        owner_entities = [e for e in entities if e[owner_key] == owner]
+        if owner_entities:
+            kept.append(max(owner_entities, key=lambda e: e[weight_key]))
+    return kept
 ```
 
 ---
 
-## 4. The Circuit-Breaker Fallback Cascade
+## 4. Latency Circuit-Breaker & Zero-Forfeit Runtime Guards
 
-In ~8% of tournament matches, CPU starvation causes turn times to exceed 1.0s, depleting the 60s overage bank. To prevent disqualification:
+CPU throttling on shared evaluation hosts can exhaust overage banks mid-match, and any unhandled exception (or rejected action loop) causes immediate forfeit. Protect the submission entrypoint with four guards:
+
+1. **Latency Circuit-Breaker**: Track `remainingOverageTime`; lazily load a fast compact fallback model (or rule heuristic) after Turn 1 and switch over permanently once remaining overage falls below a safety margin.
+2. **Round-Boundary Reset**: In multi-round / Best-of-N episodes, detect `round` transitions and immediately reset per-round trackers, hidden-state estimates, and rejection caches.
+3. **Rejection / Re-Presentation Guard**: If the environment re-presents the identical decision signature with unchanged event logs, the prior command was rejected—cycle to the next highest-ranked legal action instead of looping until timeout.
+4. **Explicit UTF-8 & Safe Fallback Wrapper**: Always pass `encoding="utf-8"` when reading local JSON/config assets (prevents silent OS-default encoding errors inside `try/except`), log/alert exceptions loudly in local tests, and fall back to a verified legal action only in production runtime.
 
 ```python
-# main.py / Kaggle agent entrypoint
-class KaggleOrbitWarsAgent:
-    def __init__(self):
-        # 1. Load Primary 200M Model
-        self.primary_model = load_model("models/primary/")
-        self.primary_model = optimize_model_for_cpu_serving(self.primary_model)
-        
-        # 2. Lazily prepared Fallback 5M Model (loaded on Turn 2)
-        self.fallback_model = None
-        self.fallback_active = False
+class FallbackCascadeAgent:
+    def __init__(self, load_primary, load_fallback, legal_fallback_fn, panic_overage_sec: float = 2.0):
+        self.primary = load_primary()
+        self.load_fallback = load_fallback
+        self.legal_fallback_fn = legal_fallback_fn
+        self.panic_overage_sec = panic_overage_sec
+        self.fallback = None
+        self.use_fallback = False
+        self.last_round = None
 
-    def __call__(self, observation, configuration):
-        remaining_bank = observation.get("remainingOverageTime", 60.0)
-        
-        # Lazy load fallback model on turn 2 to keep turn 1 startup instantaneous
-        if self.fallback_model is None and observation["step"] >= 1:
-            self.fallback_model = load_fallback_model("models/fallback/")
+    def __call__(self, obs, config):
+        try:
+            # 1. Multi-round state reset
+            rd = obs.get("round")
+            if rd is not None and rd != self.last_round:
+                if self.last_round is not None:
+                    self.primary.reset_round_state()
+                self.last_round = rd
 
-        # CIRCUIT BREAKER: Trigger emergency switchover if overage < 1.0s
-        if remaining_bank < 1.0 and self.fallback_model is not None:
-            self.fallback_active = True
+            # 2. Lazy fallback init after Turn 0 to keep startup instant
+            if self.fallback is None and obs.get("step", 0) >= 1:
+                self.fallback = self.load_fallback()
 
-        if self.fallback_active:
-            # Emergency sub-30ms inference
-            return self.fallback_model.act(observation)
-        else:
-            # Champion 200M inference
-            return self.primary_model.act(observation)
+            # 3. Overage circuit-breaker
+            if obs.get("remainingOverageTime", float("inf")) < self.panic_overage_sec and self.fallback is not None:
+                self.use_fallback = True
+
+            model = self.fallback if self.use_fallback else self.primary
+            return model.act(obs, config)
+        except Exception:
+            # Never forfeit in production; disable catch-all in local unit tests!
+            return self.legal_fallback_fn(obs)
 ```
-*Validation*: On the Kaggle leaderboard, 100% of matches that triggered the 1.0s fallback successfully converted winning positions without timing out.
 
 ---
 
-## 5. Test-Time Rollout Lookahead Search
+## 5. Test-Time Lookahead Search & Hierarchical Decoupling
 
-In 2-player zero-sum matches, pure neural policy sampling can occasionally make tactical oversights (e.g. failing to notice an opponent's sniper fleet arriving in 2 turns). As pioneered by `flg` (6th Place), augment the neural policy with a **compact 1-to-2 step lookahead search**:
+### 5.1 Bounded Rollout Lookahead
+When a fast, parity-verified forward simulator is available at serving time, evaluate the policy's top-$K$ candidate actions via 1–2 step lookahead scored by the critic (catching short-horizon tactical blunders):
 
 ```python
-def test_time_rollout_search(observation, policy_net, value_net, forward_simulator, top_k=4):
-    """
-    Evaluates top-K candidate actions using 1-step forward simulation + critic evaluation.
-    Runs in <200ms when paired with a compiled C++/Rust forward step.
-    """
-    # 1. Generate top-K candidate action sets from policy network
-    candidate_actions = policy_net.sample_top_k_action_sets(observation, k=top_k)
-    best_action = None
-    best_value = -float("inf")
-    
-    # 2. Simulate 1-step successor states using native compiled forward model
-    for action in candidate_actions:
-        next_obs, reward, is_terminal = forward_simulator.step_copy(observation, action)
-        
-        if is_terminal:
-            score = 1.0 if reward > 0 else -1.0
-        else:
-            # Evaluate successor state value using critic head
-            score = value_net(next_obs)
-            
-        if score > best_value:
-            best_value = score
-            best_action = action
-            
+def test_time_lookahead(obs, policy_net, value_net, simulator, top_k: int = 4):
+    candidates = policy_net.sample_top_k_actions(obs, k=top_k)
+    best_action, best_score = candidates[0], -float("inf")
+    for action in candidates:
+        next_obs, reward, done = simulator.step_copy(obs, action)
+        score = float(reward) if done else float(value_net(next_obs))
+        if score > best_score:
+            best_score, best_action = score, action
     return best_action
 ```
 
----
-
-## 6. Hierarchical Decoupling (Strategic Macro Policy + C++ Physics Solver)
-
-As proven by `Xiangyu Liu` (10th Place), separating strategic decision-making from continuous physics execution produces highly modular and portable Kaggle agents:
-
-```
-                       HIERARCHICAL INFERENCE PIPELINE
-                       
- [Raw Kaggle Observation: Celestial Orbits & Fleets]
-                         |
-                         v
- [Precomputed MapCache: Static Keplerian Arcs & Sun Hazards]
-                         |
-                         v
- [Strategic Policy (Neural Net): Macro-Targeting on Compact 44 Planets]
-  • Which planet to attack / reinforce
-  • What fraction of garrison to dispatch
-                         |
-                         v
- [Native C++ Intercept Solver (Test Time)]
-  • Computes exact collision-free launch angles in <5ms
-  • Solves piecewise linear comet flybys
-                         |
-                         v
- [Official Kaggle Action: [source, target_angle, ships]]
-```
-
-### Advantages for Serving
-1. **Model Parameter Efficiency**: The neural network does not need to learn trigonometric continuous angle solvers, allowing compact 2M–5M models to compete with 50M+ models.
-2. **Deterministic Safety**: The compiled C++ solver enforces 100% collision-free arcs around hazards, preventing random policy sampling errors from throwing away games.
+### 5.2 Hierarchical Macro-Policy + Native Low-Level Solver
+When action execution combines **strategic target/allocation choices** with **exact continuous physics or micro-routing constraints**:
+- Let a compact neural policy (`2M–10M` params) output high-level **discrete strategic intents** (which targets to act on, relative resource budgets, periodic macro quotas).
+- Delegate exact continuous trajectory intercepts, hazard avoidance, pathfinding, and slot-priority ordering to a deterministic native C++/Rust micro-solver (`<5ms` CPU).
+- Result: orders-of-magnitude lower sample complexity, compact submission size, and deterministic collision/legality guarantees.

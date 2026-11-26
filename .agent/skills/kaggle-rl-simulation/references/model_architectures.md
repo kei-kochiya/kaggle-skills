@@ -1,343 +1,228 @@
-# Neural Policy & Value Architectures for Competitive Games 🧠
+# Neural Policy & Value Architectures for Competitive Games
 
-Choose a representation from the game's structure and measured limitations of a small baseline. Grid networks, feedforward summaries, pooling, graph models and entity Transformers can each be useful. Variable entities do not by themselves require a large Transformer.
+Choose model structure from the game's observation geometry and measured bottlenecks of a compact baseline. Grid CNNs, pooled MLPs, graph networks, and entity Transformers each excel in different regimes.
 
-**Scope:** The dimensions, planets/fleets and decoder examples below come from particular competitive solutions. They are optional designs, not new-game defaults. Read the [simulation workflow](../SKILL.md) first. In partially observed games, keep each actor's allowed input isolated even when batching players through a shared model; a shared pass cannot expose other players' private data. Benchmark actual serving cost before relying on a claimed speedup.
-
-This reference guide details the architecture of **Entity-Centric Transformers**, **Single-Pass Multi-Player Policy Heads**, and **Continuous-Discrete Hybrid Action Decoders** distilled from top-tier competitive RL solutions.
+**Scope:** All channel widths, depths, player counts, and head shapes below are configurable templates—size them to your compute and CPU serving budgets. In partially observable games, always isolate each player's private information even when batching multiple actors through shared weights.
 
 ---
 
-## 1. Unified Multi-Entity Attention Architecture
+## 1. Variable-Entity Transformer with Global Scratch Tokens
 
-Rather than flattening board states into rigid grids or fixed-length vectors, represent the game world as a variable-length sequence of distinct entity tokens processed by a deep residual Transformer trunk.
+When environments contain variable numbers of heterogeneous objects (nodes, units, items, tiles), represent the world as a sequence of typed entity tokens plus learned control tokens:
 
-```
-                     ENTITY TOKENIZATION & TRUNK DATA FLOW
-                     
- [Observation Tensors]
-   ├── Static Planets:   (B, N_p, D_p) ──> Linear/GELU ──> (B, N_p, 768)
-   ├── Orbiting Planets: (B, N_o, D_o) ──> Linear/GELU ──> (B, N_o, 768)
-   ├── Active Fleets:    (B, N_f, D_f) ──> Linear/GELU ──> (B, N_f, 768)
-   └── Moving Comets:    (B, N_c, D_c) ──> Linear/GELU ──> (B, N_c, 768)
- 
- [Special Control Tokens (Learned Embeddings)]
-   ├── 4× Player Summaries: (B, 4, 768)  (Macro state + learned slot embedding)
-   ├── 1× Global Board:     (B, 1, 768)  (Game clock, phase, active player count)
-   ├── 4× Actor Plan:       (B, 4, 768)  (Query anchors for action decoding)
-   ├── 4× Critic Value:     (B, 4, 768)  (Anchors for win-probability estimation)
-   └── 4× Global Scratch:   (B, 4, 768)  (Unconstrained cross-attention scratchpad)
-                                 |
-                                 v
-          [Concatenate on Entity Axis: (B, Total_Tokens, 768)]
-                                 |
-                 +---------------+---------------+
-                 |  Pre-Norm Residual Trunk      |
-                 |  • 38 Transformer Blocks      |
-                 |  • 16 Self-Attention Heads    |
-                 |  • 1536-d MLP Hidden Layer    |
-                 +---------------+---------------+
-                                 |
-                 +---------------+---------------+
-                 |                               |
-                 v                               v
-    [Multi-Player Actor Heads]       [Multi-Player Critic Head]
-    (Joint distribution over         (Softmax win probability
-     all players & entities)          over all 4 players)
+```text
+  [Typed Entity Input Stems]
+    ├── Static/Map Entities:   (B, N_s, D_s) ──> MLP/Embed ──> (B, N_s, D)
+    ├── Dynamic/Unit Entities: (B, N_d, D_d) ──> MLP/Embed ──> (B, N_d, D)
+    └── Global State Features: (B, 1,   D_g) ──> Linear    ──> (B, 1,   D)
+
+  [Learned Control & Workspace Tokens]
+    ├── P× Player Summary Tokens: (B, P, D)  (Macro state + slot embedding)
+    ├── P× Actor Plan Tokens:     (B, P, D)  (Query anchors for policy heads)
+    ├── P× Critic Value Tokens:   (B, P, D)  (Anchors for value/win-prob heads)
+    └── K× Global Scratch Tokens: (B, K, D)  (Unconstrained message-passing registers)
+                                      |
+                                      v
+                [Pre-Norm Residual Transformer Trunk]
+                                      |
+                     +----------------+----------------+
+                     v                                 v
+           [Structured Actor Heads]          [Multi-Player Critic Head]
 ```
 
-### 1.1 The Role of Global Scratch Tokens
-Scratch tokens are learned parameter vectors $\mathbf{S} \in \mathbb{R}^{K \times D}$ that have no direct supervisory loss or explicit physical meaning. They append to the input sequence and attend freely to all board entities across all 38 transformer blocks:
-- Act as a **shared global workspace / bottleneck register** (similar to Perceiver / Transformer memory slots).
-- Enable distant planets and fleet clusters to exchange situational awareness without requiring direct pairwise quadratic attention across all entity tokens.
-- Significantly stabilize gradient flow through deep residual trunks.
+**Why Global Scratch Tokens Help**: Learned register tokens (`K = 4..8`) carry no direct supervision but attend freely to all entities across every layer, acting as a global working memory for long-range coordination and stabilizing deep residual gradients.
 
 ---
 
-## 2. Single-Pass Multi-Player Inference
+## 2. Single-Pass Multi-Player Trunk (Full-Observability Speedup)
 
-In an $N$-player game, conventional MARL runs $N$ independent forward passes per time step (one for each player's private perspective). The **Single-Pass Multi-Player Trunk** computes policy distributions and value estimates for all active players in a **single forward evaluation**:
+In fully observable $P$-player games, instead of running $P$ separate perspective-rotated forward passes per environment step, project all entities once and attach per-player control tokens to compute policies and values for all $P$ players in **one forward pass** ($P\times$ rollout throughput). *(For partially observable games, run separate per-seat observations or apply strict per-player visibility masks so private state never leaks across seats.)*
 
 ```python
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class SinglePassMultiPlayerTransformer(nn.Module):
-    def __init__(self, embed_dim=768, depth=38, n_heads=16, mlp_ratio=2.0):
+    def __init__(
+        self,
+        static_dim: int,
+        dynamic_dim: int,
+        global_dim: int,
+        player_dim: int,
+        n_players: int = 2,
+        n_scratch: int = 4,
+        embed_dim: int = 256,
+        depth: int = 8,
+        n_heads: int = 8,
+        mlp_ratio: float = 4.0,
+    ):
         super().__init__()
-        self.embed_dim = embed_dim
-        
-        # Entity input projection stems
-        self.planet_proj = nn.Sequential(nn.Linear(107, embed_dim * 2), nn.GELU(), nn.Linear(embed_dim * 2, embed_dim))
-        self.fleet_proj = nn.Sequential(nn.Linear(79, embed_dim * 2), nn.GELU(), nn.Linear(embed_dim * 2, embed_dim))
-        self.global_proj = nn.Linear(17, embed_dim)
-        
-        # Learned control & workspace tokens
-        self.player_tokens = nn.Parameter(torch.randn(4, embed_dim))
-        self.plan_tokens = nn.Parameter(torch.randn(4, embed_dim))
-        self.value_tokens = nn.Parameter(torch.randn(4, embed_dim))
-        self.scratch_tokens = nn.Parameter(torch.randn(4, embed_dim))
-        
-        # Pre-norm transformer trunk
-        self.blocks = nn.ModuleList([
-            TransformerBlock(embed_dim, n_heads, mlp_dim=int(embed_dim * mlp_ratio))
-            for _ in range(depth)
-        ])
+        self.static_proj = nn.Sequential(nn.Linear(static_dim, embed_dim), nn.GELU(), nn.Linear(embed_dim, embed_dim))
+        self.dynamic_proj = nn.Sequential(nn.Linear(dynamic_dim, embed_dim), nn.GELU(), nn.Linear(embed_dim, embed_dim))
+        self.global_proj = nn.Linear(global_dim, embed_dim)
+        self.player_proj = nn.Linear(player_dim, embed_dim)
+
+        self.player_slot_emb = nn.Parameter(torch.randn(1, n_players, embed_dim) * 0.02)
+        self.plan_tokens = nn.Parameter(torch.randn(1, n_players, embed_dim) * 0.02)
+        self.value_tokens = nn.Parameter(torch.randn(1, n_players, embed_dim) * 0.02)
+        self.scratch_tokens = nn.Parameter(torch.randn(1, n_scratch, embed_dim) * 0.02)
+
+        layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim,
+            nhead=n_heads,
+            dim_feedforward=int(embed_dim * mlp_ratio),
+            activation="gelu",
+            norm_first=True,
+            batch_first=True,
+        )
+        self.trunk = nn.TransformerEncoder(layer, num_layers=depth)
         self.norm = nn.LayerNorm(embed_dim)
 
-    def forward(self, obs_batch):
-        B = obs_batch["planet_features"].shape[0]
-        
-        # 1. Project raw entities
-        p_tokens = self.planet_proj(obs_batch["planet_features"]) # (B, N_p, 768)
-        f_tokens = self.fleet_proj(obs_batch["fleet_features"])   # (B, N_f, 768)
-        g_token = self.global_proj(obs_batch["global_features"]).unsqueeze(1) # (B, 1, 768)
-        
-        # 2. Expand special tokens across batch
-        player_toks = self.player_tokens.unsqueeze(0).expand(B, -1, -1) + obs_batch["player_features_proj"]
-        plan_toks = self.plan_tokens.unsqueeze(0).expand(B, -1, -1)
-        val_toks = self.value_tokens.unsqueeze(0).expand(B, -1, -1)
-        scratch_toks = self.scratch_tokens.unsqueeze(0).expand(B, -1, -1)
-        
-        # 3. Concatenate unified sequence
-        seq = torch.cat([p_tokens, f_tokens, player_toks, g_token, scratch_toks, plan_toks, val_toks], dim=1)
-        
-        # 4. Pass through deep transformer trunk
-        for block in self.blocks:
-            seq = block(seq)
-        seq = self.norm(seq)
-        
-        return seq
+    def forward(self, static_feats, dynamic_feats, global_feats, player_feats, key_padding_mask=None):
+        B = static_feats.shape[0]
+        s_tok = self.static_proj(static_feats)
+        d_tok = self.dynamic_proj(dynamic_feats)
+        g_tok = self.global_proj(global_feats).unsqueeze(1)
+        p_tok = self.player_proj(player_feats) + self.player_slot_emb
+        ctrl = torch.cat(
+            [
+                p_tok,
+                g_tok,
+                self.scratch_tokens.expand(B, -1, -1),
+                self.plan_tokens.expand(B, -1, -1),
+                self.value_tokens.expand(B, -1, -1),
+            ],
+            dim=1,
+        )
+        seq = torch.cat([s_tok, d_tok, ctrl], dim=1)
+        return self.norm(self.trunk(seq, src_key_padding_mask=key_padding_mask))
 ```
 
 ---
 
-## 3. Decoupled Multi-Head Policy Architecture
+## 3. Factorized Structured Action Heads
 
-For each active player $p$ and each eligible source planet $i$, the action space decomposes into three structured sub-actions:
+When an entity chooses **(1) whether to act**, **(2) which variable target entity to interact with**, and **(3) a bounded continuous/integer quantity**, factorize the policy hierarchically:
 
-```
-                           ACTION DECODING CASCADE
-                           
-  [Source Planet Token h_i]  +  [Player Plan Token z_p]
-                   |                      |
-                   +----------+-----------+
-                              |
-                              v
-                 [Bernoulli Launch Head]
-              P(launch | i, p) = σ(W_l [h_i || z_p])
-                              |
-             +----------------+----------------+
-             | (Launch = 0)                    | (Launch = 1)
-             v                                 v
-        [No Action]             [Query-Key Target Selection]
-                                Q_i = W_Q h_i,  K_j = W_K h_j
-                                Target Logits = (Q_i · K_j^T) / √d
-                                               |
-                                               v
-                                [Target Representation V_target]
-                                               |
-                                               v
-                                [Discretized Logistic Mixture]
-                                8 Components over [3, Max_Ships]
-```
-
-### 3.1 Bernoulli Launch Decision
-Computes whether source planet $i$ owned by player $p$ initiates a fleet launch:
-$$z_{\text{launch}} = \mathbf{W}_{\text{launch}} [\mathbf{h}_i \,\|\, \mathbf{z}_p] + b_{\text{launch}}$$
-$$\pi_{\text{launch}}(1 \mid i, p) = \sigma(z_{\text{launch}})$$
-
-### 3.2 Scaled Dot-Product Target Attention Head
-Instead of predicting target IDs through a static classification layer (which breaks if the map has variable planets), target selection is formulated as **attention matching**:
-$$\mathbf{Q}_i = \mathbf{W}_Q [\mathbf{h}_i \,\|\, \mathbf{z}_p], \quad \mathbf{K}_j = \mathbf{W}_K \mathbf{h}_j$$
-$$\text{logits}_{\text{target}}(i \to j) = \frac{\mathbf{Q}_i \cdot \mathbf{K}_j}{\sqrt{d}} + \mathbf{M}_{\text{mask}}(i, j)$$
-where $\mathbf{M}_{\text{mask}}$ masks out the source planet itself and invalid targets.
-
-### 3.3 Truncated Discretized Logistic Mixture Head
-Fleet sizing requires predicting an integer count $s \in [3, S_{\text{available}}]$. Naive discretization into 500 bins adds massive parameter overhead, while single Gaussian heads suffer from poor tail modeling. Use a **Truncated Discretized Logistic Mixture Model** with 8 components:
+1. **Binary Activation Gate**: $\pi_{\text{act}}(1 \mid i, p) = \sigma(\mathbf{W}_{\text{act}}[\mathbf{h}_i \,\|\, \mathbf{z}_p] + b)$.
+2. **Pointer / Query–Key Target Selection**: Handles variable target counts cleanly without fixed output classes:
+   $$\text{logits}_{\text{target}}(i \to j) = \frac{\mathbf{Q}_i \cdot \mathbf{K}_j}{\sqrt{d}} + \mathbf{M}_{\text{legal}}(i, j)$$
+3. **Truncated Discretized Logistic Mixture Quantity Head**: Models multimodal integer/continuous allocations over `[min_qty, max_qty]` cleanly with far fewer parameters than large flat categorical heads:
 
 ```python
-class LogisticMixtureFleetSizingHead(nn.Module):
-    def __init__(self, embed_dim=768, n_mixtures=8):
+import torch.nn.functional as F
+
+class LogisticMixtureQuantityHead(nn.Module):
+    def __init__(self, embed_dim: int = 256, n_mixtures: int = 8):
         super().__init__()
         self.n_mixtures = n_mixtures
-        # Outputs: 8 mixture weights, 8 means (normalized in [0,1]), 8 log-scales
         self.mlp = nn.Sequential(
             nn.Linear(embed_dim * 2, embed_dim),
             nn.GELU(),
-            nn.Linear(embed_dim, n_mixtures * 3)
+            nn.Linear(embed_dim, n_mixtures * 3),
         )
 
-    def forward(self, source_hidden, target_value, max_ships):
-        B = source_hidden.shape[0]
-        combined = torch.cat([source_hidden, target_value], dim=-1)
-        params = self.mlp(combined)
-        
-        pi_logits = params[:, :self.n_mixtures]
-        means_norm = torch.sigmoid(params[:, self.n_mixtures:2*self.n_mixtures])
-        log_scales = torch.clamp(params[:, 2*self.n_mixtures:], min=-3.0, max=3.0)
-        
-        # Scale means to valid ship range [3, max_ships]
-        means = 3.0 + means_norm * (max_ships.unsqueeze(-1) - 3.0)
-        scales = torch.exp(log_scales)
-        
-        return F.softmax(pi_logits, dim=-1), means, scales
+    def forward(self, source_hidden, target_hidden, min_qty, max_qty):
+        params = self.mlp(torch.cat([source_hidden, target_hidden], dim=-1))
+        pi_logits = params[..., : self.n_mixtures]
+        means_norm = torch.sigmoid(params[..., self.n_mixtures : 2 * self.n_mixtures])
+        log_scales = torch.clamp(params[..., 2 * self.n_mixtures :], min=-3.0, max=3.0)
+
+        span = torch.clamp(max_qty - min_qty, min=1.0).unsqueeze(-1)
+        means = min_qty.unsqueeze(-1) + means_norm * span
+        return F.softmax(pi_logits, dim=-1), means, torch.exp(log_scales)
 ```
 
 ---
 
-## 4. Multi-Player Softmax Value Head
+## 4. Multi-Player Zero-Sum & Exclusive-Winner Critic Heads
 
-For an objective with one exclusive winner, a softmax over players is one way to model winner probabilities. Scalar or per-player value heads remain valid choices for other rewards. Draws, shared wins or rank/score objectives need targets and output support that represent those outcomes. The code below illustrates an exclusive-winner head:
+- **Exclusive-Winner Softmax Critic ($P$ Players)**: Pass each player's value token through a shared scalar MLP, mask eliminated players to `-1e9`, and apply `softmax` across players to guarantee $\sum_p \hat{p}_p = 1$.
+- **Zero-Sum Paired Critic (2-Player With Score Differential)**: Combining relative score difference with learned phase-dependent weights $(a\tau + b)$ gives a calibrated zero-sum baseline $V_0 + V_1 = 0$:
+  $$z_i = f_\theta(o_i) + (a\tau + b)\,\Delta m_i, \qquad V_i = \tanh\!\left(\frac{z_i - z_{1-i}}{2}\right)$$
+  *(For games with draws, score-based objectives, or general-sum payoffs, output separate outcome/return heads matching the actual scoring rule rather than forcing an exclusive-winner softmax.)*
 
 ```python
 class MultiPlayerWinProbCritic(nn.Module):
-    def __init__(self, embed_dim=768, n_players=4):
+    def __init__(self, embed_dim: int = 256):
         super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim),
-            nn.GELU(),
-            nn.Linear(embed_dim, 1)
-        )
+        self.mlp = nn.Sequential(nn.Linear(embed_dim, embed_dim), nn.GELU(), nn.Linear(embed_dim, 1))
 
-    def forward(self, value_tokens, still_playing_mask):
-        # value_tokens: (B, 4, 768)
-        logits = self.mlp(value_tokens).squeeze(-1) # (B, 4)
-        
-        # Mask out eliminated players
-        logits = logits.masked_fill(~still_playing_mask, -1e9)
-        win_probs = F.softmax(logits, dim=-1) # (B, 4)
-        
-        return win_probs
+    def forward(self, value_tokens, alive_mask):
+        # value_tokens: (B, P, D), alive_mask: (B, P) bool
+        logits = self.mlp(value_tokens).squeeze(-1).masked_fill(~alive_mask, -1e9)
+        return F.softmax(logits, dim=-1)
 ```
-
-### Advantage Computation for 2-Player & 4-Player Modes
-- In **2-player win/loss matches without draws**, convert player $p$'s win probability $\hat{p}_p \in [0, 1]$ to a symmetric $[-1, 1]$ value target. With draws, use outcome probabilities consistent with the reward (e.g. $P(\text{win}) - P(\text{loss})$ for `+1/0/-1`):
-  $$V_p(s) = 2 \hat{p}_p - 1$$
-- In **4-player matches**, use the win probability $\hat{p}_p$ as the baseline for Generalized Advantage Estimation (GAE):
-  $$\delta_t^p = r_t^p + \gamma \hat{p}_{t+1}^p - \hat{p}_t^p$$
-  $$\hat{A}_t^p = \sum_{l=0}^{\infty} (\gamma \lambda)^l \delta_{t+l}^p$$
 
 ---
 
-## 5. Relational Edge-Attention for Spatial Networks
+## 5. Relational Edge-Attention
 
-As demonstrated by the 6th place solution (`flg`), standard self-attention $\text{Softmax}\left(\frac{Q K^T}{\sqrt{d}}\right)$ calculates node-to-node attention strictly from independent entity features, forcing the model to re-learn pairwise geometric relations implicitly.
-
-**Relational Edge-Attention** directly injects precomputed or learned pairwise edge features $\mathbf{E} \in \mathbb{R}^{B \times N \times N \times D_e}$ into the attention logits:
-
-```
-                      RELATIONAL EDGE-ATTENTION MECHANISM
-                      
- [Query Matrix Q_i]   [Key Matrix K_j]        [Pairwise Edge Tensor E_{i,j}]
-         |                   |                   (Flight time, solar obstruction,
-         +---------+---------+                    defensive garrison forecast)
-                   |                                           |
-                   v                                           v
-       [Dot Product: Q_i · K_j^T / √d]                [Linear Projection: W_e E]
-                   |                                           |
-                   +---------------------+---------------------+
-                                         |
-                                         v
-                         [Biased Logits: A_{i,j} + W_e E_{i,j}]
-                                         |
-                                         v
-                                      Softmax
-```
+When pairwise relationships between entities (travel time, line-of-sight obstruction, graph distance, resource compatibility) dominate tactics, inject pairwise edge features $\mathbf{E} \in \mathbb{R}^{B \times N \times N \times D_e}$ directly as per-head attention biases. Compact edge-attention Transformers (`2M–5M` params) frequently match much larger plain Transformers under modest compute budgets:
 
 ```python
 class RelationalEdgeAttention(nn.Module):
-    def __init__(self, embed_dim=256, n_heads=8, edge_dim=16):
+    def __init__(self, embed_dim: int = 256, n_heads: int = 8, edge_dim: int = 16):
         super().__init__()
         self.embed_dim = embed_dim
         self.n_heads = n_heads
         self.head_dim = embed_dim // n_heads
-        
         self.q_proj = nn.Linear(embed_dim, embed_dim)
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.v_proj = nn.Linear(embed_dim, embed_dim)
         self.out_proj = nn.Linear(embed_dim, embed_dim)
-        
-        # Project pairwise edge features to an additive attention bias per head
         self.edge_proj = nn.Linear(edge_dim, n_heads)
 
-    def forward(self, x, edges, mask=None):
-        # x: (B, N, embed_dim), edges: (B, N, N, edge_dim)
+    def forward(self, x, edges, valid_key_mask=None):
         B, N, _ = x.shape
-        
         q = self.q_proj(x).view(B, N, self.n_heads, self.head_dim).transpose(1, 2)
         k = self.k_proj(x).view(B, N, self.n_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(x).view(B, N, self.n_heads, self.head_dim).transpose(1, 2)
-        
-        # Standard query-key dot product: (B, heads, N, N)
+
         scores = torch.matmul(q, k.transpose(-2, -1)) / (self.head_dim ** 0.5)
-        
-        # Project and add edge bias: (B, N, N, heads) -> (B, heads, N, N)
-        edge_bias = self.edge_proj(edges).permute(0, 3, 1, 2)
-        scores = scores + edge_bias
-        
-        if mask is not None:
-            scores = scores.masked_fill(~mask.unsqueeze(1).unsqueeze(2), -1e9)
-            
-        attn_weights = F.softmax(scores, dim=-1)
-        out = torch.matmul(attn_weights, v).transpose(1, 2).contiguous().view(B, N, self.embed_dim)
+        scores = scores + self.edge_proj(edges).permute(0, 3, 1, 2)
+
+        if valid_key_mask is not None:
+            scores = scores.masked_fill(~valid_key_mask.unsqueeze(1).unsqueeze(2), -1e9)
+
+        attn = F.softmax(scores, dim=-1)
+        out = torch.matmul(attn, v).transpose(1, 2).contiguous().view(B, N, self.embed_dim)
         return self.out_proj(out)
 ```
-*Takeaway*: Adding edge features allowed a compact 2.5M parameter transformer to outperform traditional 10M+ models by directly providing flight travel times and collision hazards to the attention heads.
 
 ---
 
 ## 6. 2D Rotary Position Embeddings (2D RoPE)
 
-As proven in Billy Bradley's 8th place solution (*"Ender for <$200"*), Cartesian grid coordinates $(x, y)$ or absolute sinusoidal positional encodings fail to capture relative continuous displacements in orbital mechanics.
-
-**2D RoPE** generalises 1D RoPE (used in modern LLMs) by splitting the query and key channels into two halves—one rotating with coordinate $x$, the other rotating with coordinate $y$:
+For entities embedded in continuous or discrete 2D space $(x_i, y_i)$, rotating separate channel partitions by $x$ and $y$ makes $\mathbf{q}_i \cdot \mathbf{k}_j$ depend natively on relative displacement $(\mathbf{x}_i - \mathbf{x}_j)$. When a board contains **separate non-contiguous coordinate frames** (e.g., two disconnected player maps plus non-spatial global tokens), apply 2D RoPE **only between tokens sharing the same physical coordinate frame**, leaving cross-frame and global channels unrotated:
 
 ```python
-def apply_2d_rope(q, k, pos_x, pos_y, theta_base=10000.0):
-    # q, k: (B, N, heads, head_dim), pos_x, pos_y: (B, N)
-    B, N, H, D = q.shape
-    d_half = D // 2
-    
-    # Compute inverse frequency bands
-    inv_freq = 1.0 / (theta_base ** (torch.arange(0, d_half, 2, device=q.device).float() / d_half))
-    
-    # Angles for X and Y components
-    sinusoid_x = torch.einsum("bn,d->bnd", pos_x, inv_freq) # (B, N, d_half/2)
-    sinusoid_y = torch.einsum("bn,d->bnd", pos_y, inv_freq)
-    
-    # Interleave to get full rotary embeddings
-    rot_x = torch.cat([sinusoid_x, sinusoid_x], dim=-1).unsqueeze(2) # (B, N, 1, d_half)
-    rot_y = torch.cat([sinusoid_y, sinusoid_y], dim=-1).unsqueeze(2)
-    
-    # Rotate first half of channels by X, second half by Y
-    q_x, q_y = q[..., :d_half], q[..., d_half:]
-    k_x, k_y = k[..., :d_half], k[..., d_half:]
-    
-    q_x_rot = (q_x * rot_x.cos()) + (rotate_half(q_x) * rot_x.sin())
-    q_y_rot = (q_y * rot_y.cos()) + (rotate_half(q_y) * rot_y.sin())
-    k_x_rot = (k_x * rot_x.cos()) + (rotate_half(k_x) * rot_x.sin())
-    k_y_rot = (k_y * rot_y.cos()) + (rotate_half(k_y) * rot_y.sin())
-    
-    return torch.cat([q_x_rot, q_y_rot], dim=-1), torch.cat([k_x_rot, k_y_rot], dim=-1)
-
 def rotate_half(x):
-    x1, x2 = x[..., :x.shape[-1]//2], x[..., x.shape[-1]//2:]
-    return torch.cat([-x2, x1], dim=-1)
+    half = x.shape[-1] // 2
+    return torch.cat([-x[..., half:], x[..., :half]], dim=-1)
+
+def apply_2d_rope(q, k, pos_x, pos_y, theta_base: float = 1000.0):
+    # q, k: (B, N, H, D) with D divisible by 4; pos_x, pos_y: (B, N)
+    d_half = q.shape[-1] // 2
+    inv_freq = 1.0 / (theta_base ** (torch.arange(0, d_half, 2, device=q.device).float() / d_half))
+
+    ang_x = torch.einsum("bn,d->bnd", pos_x.float(), inv_freq)
+    ang_y = torch.einsum("bn,d->bnd", pos_y.float(), inv_freq)
+    rot_x = torch.cat([ang_x, ang_x], dim=-1).unsqueeze(2)
+    rot_y = torch.cat([ang_y, ang_y], dim=-1).unsqueeze(2)
+
+    qx, qy = q[..., :d_half], q[..., d_half:]
+    kx, ky = k[..., :d_half], k[..., d_half:]
+
+    q_rot = torch.cat([qx * rot_x.cos() + rotate_half(qx) * rot_x.sin(), qy * rot_y.cos() + rotate_half(qy) * rot_y.sin()], dim=-1)
+    k_rot = torch.cat([kx * rot_x.cos() + rotate_half(kx) * rot_x.sin(), ky * rot_y.cos() + rotate_half(ky) * rot_y.sin()], dim=-1)
+    return q_rot, k_rot
 ```
-*Properties*: $\mathbf{q}_i \cdot \mathbf{k}_j$ directly computes relative spatial displacement $(\mathbf{x}_i - \mathbf{x}_j)$ and is translation-invariant and rotationally sensitive without hard-coded grid discretizations.
 
 ---
 
-## 7. "Planet Future" Forward Trajectory Projections
+## 7. Deterministic Forward-Horizon State Projections
 
-Engineered by Boey (9th Place), this technique compensates for temporal blindness by forward-simulating deterministic planetary production and fleet arrival times:
-
-For each planet $i$ and future horizon $H \in \{1, 2, 5, 10, 20\}$ turns, simulate:
-$$\hat{G}_i(t + H) = G_i(t) + H \cdot P_i + \sum_{\substack{f \in \mathcal{F}_{\text{friendly}} \\ \text{ETA}(f) \le H}} S_f - \sum_{\substack{h \in \mathcal{F}_{\text{hostile}} \\ \text{ETA}(h) \le H}} S_h$$
-
-Passing these explicit multi-horizon garrison forecasts directly into the planet embedding stem allows the policy to:
-1. Detect impending falls 15–20 turns in advance.
-2. Launch synchronized multi-planet defense reinforcements with arrival times matching hostile fleet landings.
-3. Eliminate the need for deep recurrent memory (LSTM/GRU) by baking deterministic forward trajectories into the observation tensor.
+Whenever parts of the environment evolve deterministically from currently visible state (e.g., in-transit arrivals, scheduled production, cooldown expiration, or predictable boundary movement), explicitly forward-simulate multi-horizon projections $H \in \{1, 2, 5, 10, \dots\}$ and append them to each entity's feature vector:
+$$\hat{S}_i(t + H) = \text{SimulateVisibleDynamics}(S(t), H)$$
+Baking known deterministic arrivals and resource projections into the observation eliminates temporal blindness, enables synchronized multi-entity timing without heavy recurrent memory, and strictly respects partial observability (never reading hidden private state or future RNG).

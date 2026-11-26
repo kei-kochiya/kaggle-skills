@@ -1,143 +1,136 @@
 # Soft Pseudo-Labeling Distillation & Group-Wise Partitions
 
-A production reference for distilling out-of-fold teacher ensembles into student models and generating decorrelated error residuals via group-wise subgroup models. Distilled from **S6E9 (3rd Place Team M & M and 8th Place yuurei)**.
+Universal recipes for distilling fold-isolated teacher ensembles into student models using continuous soft probabilities and generating decorrelated residuals via group-wise subgroup models.
 
 ---
 
-## 1. Why Hard Pseudo-Labels Fail vs. Soft Distillation
+## 1. Why Continuous Soft Pseudo-Labels Beat Hard Thresholding
 
-Standard pseudo-labeling often attempts to threshold test set predictions into hard binary targets $\hat{y} \in \{0, 1\}$. 
-
-In competitive tabular machine learning, **hard pseudo-labels consistently degrade cross-validation**:
-- **Threshold Noise Amplification:** Forcing uncertain probabilities (e.g. $p=0.52$) into class 1 injects severe label noise directly into the loss function.
-- **Gradient Shock:** Binary cross-entropy assigns massive gradients to misclassified confident points.
-
-### The Soft Distillation Law:
-Instead of thresholding, train student models on continuous probabilities $\hat{y} = p \in (0, 1)$ with sample weighting:
-
-$$\mathcal{L}_{\text{student}} = \sum_{i \in \text{train}} \text{BCE}(y_i, f(\mathbf{x}_i)) + w_{\text{test}} \sum_{j \in \text{test}} \text{BCE}(p_j^{\text{teacher}}, f(\mathbf{x}_j)), \quad w_{\text{test}} = 2.0$$
-
-#### Empirical Proof (3rd Place S6E9):
-- Hard pseudo-labels ($0/1$) scored **lower** than training with no pseudo-labels at all.
-- Soft continuous pseudo-labels scored **higher** across all folds.
-- Permuting soft pseudo-labels collapsed performance completely, proving that the continuous probabilities transferred calibrated epistemic teacher uncertainty.
+Thresholding test predictions into hard `{0, 1}` pseudo-labels amplifies boundary label noise and injects steep miscalibrated gradients into binary cross-entropy. Training students on **continuous soft teacher probabilities** $p_j^{\text{teacher}} \in (0, 1)$ transfers calibrated epistemic uncertainty:
+$$\mathcal{L}_{\text{student}} = \sum_{i \in \text{train}} \text{BCE}(y_i, f(\mathbf{x}_i)) + w_{\text{test}} \sum_{j \in \text{test}} \text{BCE}(p_j^{\text{teacher}}, f(\mathbf{x}_j))$$
+where $w_{\text{test}}$ (typically tuned in `[0.5, 2.0]` on honest CV) controls distillation strength.
 
 ---
 
-## 2. Out-Of-Fold Teacher Isolation Architecture
+## 2. Fold-Isolated Teacher Distillation Implementation
 
 > [!IMPORTANT]
-> The teacher predictions for test rows used in outer fold $k$ **MUST** be generated strictly by a teacher whose training set **excluded validation fold $k$**. This maintains strict out-of-fold validity and prevents artificial variance shrinkage.
+> **Strict Fold Isolation**: The soft test labels used inside outer fold $k$ **MUST** come from a teacher trained strictly on outer training fold $k$ (excluding validation fold $k$!). Using full-dataset averaged test predictions leaks validation information across folds and produces overly optimistic CV.
 
 ```python
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
-from sklearn.model_selection import StratifiedKFold
 
-def train_soft_distillation_student(X_train, y_train, X_test, teacher_test_preds, test_sample_weight=2.0, cv=5):
+
+def train_soft_distillation_student(
+    X_train: pd.DataFrame,
+    y_train: np.ndarray,
+    X_test: pd.DataFrame,
+    fold_teacher_test_preds: np.ndarray,
+    folds: list[tuple[np.ndarray, np.ndarray]],
+    test_sample_weight: float = 1.0,
+):
     """
-    Distills continuous soft pseudo-labels from an apex teacher into a student model.
+    Distill fold-isolated soft teacher test predictions into a student GBDT.
+    fold_teacher_test_preds: shape (len(folds), len(X_test)), where row k was
+    predicted by a teacher that NEVER saw validation fold k.
     """
-    skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
-    student_oof = np.zeros(len(y_train))
-    student_test = np.zeros(len(X_test))
-    
-    for fold, (tr_idx, val_idx) in enumerate(skf.split(X_train, y_train)):
-        X_tr_orig, y_tr_orig = X_train.iloc[tr_idx], y_train[tr_idx]
+    assert fold_teacher_test_preds.shape == (len(folds), len(X_test))
+    student_oof = np.zeros(len(y_train), dtype=np.float64)
+    student_test = np.zeros(len(X_test), dtype=np.float64)
+
+    for fold, (tr_idx, val_idx) in enumerate(folds):
+        X_tr, y_tr = X_train.iloc[tr_idx], y_train[tr_idx]
         X_val, y_val = X_train.iloc[val_idx], y_train[val_idx]
-        
-        # 1. Combine training fold with soft pseudo-labeled test rows
-        X_combined = pd.concat([X_tr_orig, X_test], ignore_index=True)
-        y_combined = np.concatenate([y_tr_orig, teacher_test_preds])
-        
-        # Sample weights: 1.0 for true training labels, 2.0 for soft teacher pseudo-labels
-        weights = np.concatenate([
-            np.ones(len(y_tr_orig), dtype=np.float32),
-            np.full(len(teacher_test_preds), test_sample_weight, dtype=np.float32)
-        ])
-        
-        trn_data = lgb.Dataset(X_combined, label=y_combined, weight=weights)
+        soft_y_test = fold_teacher_test_preds[fold]
+
+        X_comb = pd.concat([X_tr, X_test], ignore_index=True)
+        y_comb = np.concatenate([y_tr, soft_y_test])
+        weights = np.concatenate(
+            [np.ones(len(y_tr), dtype=np.float32), np.full(len(soft_y_test), test_sample_weight, dtype=np.float32)]
+        )
+
+        trn_data = lgb.Dataset(X_comb, label=y_comb, weight=weights)
         val_data = lgb.Dataset(X_val, label=y_val, reference=trn_data)
-        
+
         params = {
-            'objective': 'binary', # In LightGBM binary handles continuous targets p in (0, 1)
-            'metric': 'auc',
-            'learning_rate': 0.03,
-            'num_leaves': 63,
-            'subsample': 0.8,
-            'colsample_bytree': 0.7,
-            'verbose': -1,
-            'random_state': 42 + fold
+            "objective": "binary",  # LightGBM binary loss accepts continuous soft targets in (0, 1)
+            "metric": "auc",
+            "learning_rate": 0.03,
+            "num_leaves": 63,
+            "subsample": 0.8,
+            "colsample_bytree": 0.7,
+            "verbose": -1,
+            "random_state": 42 + fold,
         }
-        
         model = lgb.train(
             params,
             trn_data,
             num_boost_round=3000,
             valid_sets=[val_data],
-            callbacks=[lgb.early_stopping(stopping_rounds=100, verbose=False)]
+            callbacks=[lgb.early_stopping(stopping_rounds=100, verbose=False)],
         )
-        
         student_oof[val_idx] = model.predict(X_val)
-        student_test += model.predict(X_test) / cv
-        
+        student_test += model.predict(X_test) / len(folds)
+
     return student_oof, student_test
 ```
 
 ---
 
-## 3. Group-Wise Subgroup Partitioning for Ensembling Diversity
+## 3. Group-Wise Subgroup Partitioning for Ensemble Diversity
 
-In mature stacks, global tree models (LightGBM, XGBoost, CatBoost) share high prediction correlation ($\rho > 0.985$). 
+Global GBDT models often correlate at $\rho > 0.985$. Training dedicated subgroup models on coarse categorical slices (e.g., high-volume segment or interaction strata) produces weaker standalone CV (fewer rows per slice) yet **decorrelated error residuals** that can add consistent lift inside a meta-stacker.
 
-To introduce orthogonal variance without exotic architectures, train **group-wise models**:
-1. Partition the dataset by high-level categorical slices (e.g. `City Type` $\times$ `Car Type`, `Age Group`).
-2. Train an isolated model strictly on each subgroup slice.
-3. For validation and test, route each row to its corresponding subgroup model.
-
-### The Subgroup Paradox:
-- A single subgroup model trained on $1/10$-th of the data will have **lower standalone CV** (e.g., `0.9449` vs `0.9462` global).
-- However, when added to a meta-stack, it provides **consistent positive lift (+0.000016 across all 10 folds in 8th place)** because its localized errors are decorrelated from the global models' errors.
+Always reuse the **exact global outer fold split** and initialize outputs from a global fallback predictor so rare or unseen slices never receive raw `0.0` defaults:
 
 ```python
-def train_groupwise_ensemble(X_train, y_train, X_test, group_col, cv=5):
+def train_groupwise_models(
+    X_train: pd.DataFrame,
+    y_train: np.ndarray,
+    X_test: pd.DataFrame,
+    group_col: str,
+    folds: list[tuple[np.ndarray, np.ndarray]],
+    global_oof_fallback: np.ndarray,
+    global_test_fallback: np.ndarray,
+    min_group_rows: int = 500,
+):
     """
-    Trains dedicated models per subgroup and stitches predictions back.
+    Train isolated models per sufficiently populated subgroup using shared outer folds,
+    falling back smoothly to a global model on rare/unseen groups.
     """
-    groups = X_train[group_col].unique()
-    oof_predictions = np.zeros(len(X_train))
-    test_predictions = np.zeros(len(X_test))
-    
-    for g in groups:
-        tr_mask = (X_train[group_col] == g)
-        te_mask = (X_test[group_col] == g)
-        
-        if tr_mask.sum() < 100:
+    oof_preds = global_oof_fallback.copy()
+    test_preds = global_test_fallback.copy()
+
+    for g in X_train[group_col].dropna().unique():
+        tr_mask_all = (X_train[group_col] == g).to_numpy()
+        te_mask = (X_test[group_col] == g).to_numpy()
+        if tr_mask_all.sum() < min_group_rows:
             continue
-            
-        X_tr_g = X_train[tr_mask].drop(columns=[group_col])
-        y_tr_g = y_train[tr_mask]
-        X_te_g = X_test[te_mask].drop(columns=[group_col])
-        
-        # Train standard GBDT on this subgroup
-        skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
-        g_oof = np.zeros(len(X_tr_g))
-        g_test = np.zeros(len(X_te_g))
-        
-        for tr_idx, val_idx in skf.split(X_tr_g, y_tr_g):
-            model = lgb.LGBMClassifier(n_estimators=1000, learning_rate=0.03, random_state=42, verbose=-1)
-            model.fit(
-                X_tr_g.iloc[tr_idx], y_tr_g.iloc[tr_idx],
-                eval_set=[(X_tr_g.iloc[val_idx], y_tr_g.iloc[val_idx])],
-                callbacks=[lgb.early_stopping(50, verbose=False)]
+
+        g_test_accum = np.zeros(te_mask.sum(), dtype=np.float64)
+        for fold, (tr_idx, val_idx) in enumerate(folds):
+            g_tr_idx = tr_idx[tr_mask_all[tr_idx]]
+            g_val_idx = val_idx[tr_mask_all[val_idx]]
+            if len(g_tr_idx) < 50 or len(g_val_idx) == 0 or len(np.unique(y_train[g_tr_idx])) < 2:
+                continue
+
+            model = lgb.LGBMClassifier(
+                n_estimators=1500, learning_rate=0.03, random_state=42 + fold, verbose=-1
             )
-            g_oof[val_idx] = model.predict_proba(X_tr_g.iloc[val_idx])[:, 1]
-            if len(X_te_g) > 0:
-                g_test += model.predict_proba(X_te_g)[:, 1] / cv
-                
-        oof_predictions[tr_mask] = g_oof
-        test_predictions[te_mask] = g_test
-        
-    return oof_predictions, test_predictions
+            model.fit(
+                X_train.iloc[g_tr_idx].drop(columns=[group_col]),
+                y_train[g_tr_idx],
+                eval_set=[(X_train.iloc[g_val_idx].drop(columns=[group_col]), y_train[g_val_idx])],
+                callbacks=[lgb.early_stopping(50, verbose=False)],
+            )
+            oof_preds[g_val_idx] = model.predict_proba(X_train.iloc[g_val_idx].drop(columns=[group_col]))[:, 1]
+            if te_mask.any():
+                g_test_accum += model.predict_proba(X_test.loc[te_mask].drop(columns=[group_col]))[:, 1] / len(folds)
+
+        if te_mask.any():
+            test_preds[te_mask] = g_test_accum
+
+    return oof_preds, test_preds
 ```

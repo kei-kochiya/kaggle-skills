@@ -40,9 +40,7 @@ Start with [A head start in the next simulation competition](reinforcement-learn
 | **Kaggriculture** | Two-player fixed-season farming with shared dynamic prices | • **1st (MMPQ)**: 10.2M Transformer, within-farm 2D RoPE, 50d opponent inventory estimator, LNS+DP solver, alternating BC $\leftrightarrow$ PPO + PPO-masked action corrections (`61.1%` vs 2nd)<br>• **2nd (vmerckle)**: 37M HourFormer in **30× RTX 5090 hrs (~$10)**, 22k-game BC + 25% lost-game PPO + Wheat Trading Clutch (`9% -> 39%` vs MMPQ)<br>• **3rd–28th Archetypes**: Executed-state labels (+20 wins/24), Macro-BC + C++ Day Compiler, Hybrid BC opening + Rust planner, Rust 29.8k g/s engine | 🥇 **1st** (MMPQ, 9.04M games)<br>🥈 **2nd** (`vmerckle`, 30h)<br>🥉 **3rd** (DSM) · 🏅 **4th** (Farmcore)<br>10,148 teams | [Deep Dive](reinforcement-learning/kaggriculture.md) |
 | **Kaggle Orbit Wars** | Multi-Agent 2D Orbital Space Conquest (2-Player & 4-Player) | • Sutton's Bitter Lesson: 200M-parameter Transformer trained for 15B steps<br>• Single-pass multi-player forward pass (evaluates all players in 1 pass, 2-4x speedup)<br>• High-performance Rust simulator (PyO3 + Rayon) reaching 120,000+ steps/sec with zero-copy pinned buffers<br>• Sub-100MiB submission packing via 4-bit NormalFloat (NF4-LSQ) group quantization (90.7MiB)<br>• Multi-tier serving cascade: dynamic int8 CPU inference + automatic 5M fallback when overage < 1.0s | 🥇 **1st Place Gold**<br>15 Billion Steps<br>32× B200 GPUs | [Deep Dive](reinforcement-learning/orbit-wars.md) |
 | **Kaggle Maze Crawler** | 2-Player Partially Observable Infinite Scrolling Maze RTS | • Heuristic Supremacy vs. Deep RL: 1st place scored BFS vs 3rd place PPO self-play<br>• Jump-aware BFS movement with arrival-time Steps-Before-Death (`sbd`) score steering<br>• One-shot economy latch (`ENERGY_CAP = 3000`): stop farming, shift 100% to hunting<br>• Active combat win condition: 300-energy Miner drop behind advance (`dist=5`) + lookahead survival<br>• The Homogeneous Self-Play Trap: why pure self-play RL created an energy-farming blind spot | 🥇 **1st Place Gold** (Heuristic)<br>🥉 **3rd Place Bronze** (Deep RL)<br>1v1 RTS Simulation | [Deep Dive](reinforcement-learning/maze-crawler.md) |
-| **Pokémon TCG AI Battle Playground** | 2-Player Pokémon Card Game (Best-of-Three `cabt` Environment) | • Token-Transformer policy over hand, bench, active, and option tokens<br>• The Legendary "Seat Bug" Fix: Turn physical seat index into turn-order indicator (+168 Elo, 15.7% → 86.8% win rate)<br>• Deterministic First-Turn Advantage (+18 to +23 win rate points in mirrors)<br>• Bo3 Round-Boundary Tracker Reset & 1,431 Card PCA latent expansion<br>• Zero-forfeit runtime guardrails: Rejection vs re-presentation detection & 30s clock panic valve | 🥉 **3rd Place Ladder** (LB 1132.4)<br>60-Card Meta Deck (Hydrapple / Ogerpon ex)<br>Full Source & Submission Bundle | [Deep Dive](reinforcement-learning/pokemon-tcg-playground.md) |
-
-*(More competition writeups will be added as new competitions are unpacked into `Competition/`)*
+| **Pokémon TCG AI Battle Playground** | 2-Player Pokémon Card Game (Best-of-Three `cabt` Environment) | • Token-Transformer policy over hand, bench, active, and option tokens<br>• The Legendary "Seat Bug" Fix: Turn physical seat index into turn-order indicator (+168 Elo, 15.7% → 86.8% win rate)<br>• Deterministic First-Turn Advantage (+18 to +23 win rate points in mirrors)<br>• Bo3 Round-Boundary Tracker Reset & 1,431 Card PCA latent expansion<br>• Zero-forfeit runtime guardrails: Rejection vs re-presentation detection & 30s clock panic valve | 🥉 **3rd Place Ladder** (LB 1132.4)<br>60-Card Meta Deck (Hydrapple / Ogerpon ex) | [Deep Dive](reinforcement-learning/pokemon-tcg-playground.md) |
 
 ### 🖼️ Computer Vision Competitions
 
@@ -104,7 +102,7 @@ Specialized architectural runbooks for orchestrating multi-LLM teams and autonom
 
 | Workflow Runbook | Agent Roles & Ecosystem | Core Methodology & Scope | Link |
 | :--- | :--- | :--- | :--- |
-| **Autonomous Multi-LLM Competitive Playbook** | GPT-5.4, Gemini 3.1, Claude Opus 4.6 (4× A100 GPU RAPIDS cluster) | • KGMON 7-Phase Playbook: Automated EDA, 850-model scaling, 600k lines of code<br>• Synthetic data generator reverse-engineering (snap & digit forensics)<br>• GPU forward hill-climbing model selection & 4-level deep stacking<br>• Programmatic guardrails against data leakage and numerical instability | [Guide](workflows/llm-agentic-kaggle-workflow.md) |
+| **Autonomous Multi-LLM Competitive Workflow** | Multi-LLM Execution Workers + Cross-Family Read-Only Auditor | • 7-Phase domain-neutral autonomous ML lifecycle & shared `folds.npy` ledger<br>• Cross-Family Independent Read-Only Auditor & 8 pre-submission anti-leakage gates<br>• 2-Stage "Explore Fast, Confirm Strictly" funnel (`Fold 0 → Fold 1 → Full Nested CV`)<br>• Reusable domain-neutral agent prompting templates & multi-leg relay memory | [Guide](workflows/llm-agentic-kaggle-workflow.md) |
 
 ---
 
@@ -117,27 +115,27 @@ Handbook/
 ├── README.md                          # Master track index & taxonomy (this file)
 ├── workflows/                         # Autonomous agentic engineering playbooks
 │   └── llm-agentic-kaggle-workflow.md # Multi-LLM competitive engineering runbook
-│   ├── tabular/                           # Structured/tabular data challenges
-│   │   ├── playground-s6e1-exam-score.md
-│   │   ├── playground-s6e2-heart-disease.md
-│   │   ├── playground-s6e3-customer-churn.md
-│   │   ├── playground-s6e4-irrigation-need.md
-│   │   ├── playground-s6e5-f1-pit-stops.md
-│   │   ├── playground-s6e6-stellar-class.md
-│   │   ├── playground-s6e7-student-health-risk.md
-│   │   ├── playground-s6e8-smartphone-addiction.md
-│   │   ├── playground-s6e9-will-buy-ev.md
-│   │   ├── playground-s6e10-airline-satisfaction.md
-│   │   ├── rogii-wellbore-geology.md
-│   │   ├── cibmtr-post-hct-survival.md
-│   │   ├── march-ml-mania-2026.md
-│   │   └── neurips-open-polymer-2025.md
-│   └── reinforcement-learning/            # Multi-agent RL & simulation challenges
-│       ├── simulation-competition-starter.md # New-game workflow and agent kickoff prompt
-│       ├── kaggriculture.md               # 1st–28th Place solutions, BC/PPO, masks & solvers
-│       ├── orbit-wars.md                  # 1st–10th Place Orbit Wars: 200M Transformer, Rust, JAX, NF4
-│       ├── maze-crawler.md                # 1st Place Scored BFS Heuristics vs. 3rd Place Deep RL & JAX
-│       └── pokemon-tcg-playground.md      # 3rd Place Bo3 Pokémon TCG Token-Transformer & Seat Bug fix
+├── tabular/                           # Structured/tabular data challenges
+│   ├── playground-s6e1-exam-score.md
+│   ├── playground-s6e2-heart-disease.md
+│   ├── playground-s6e3-customer-churn.md
+│   ├── playground-s6e4-irrigation-need.md
+│   ├── playground-s6e5-f1-pit-stops.md
+│   ├── playground-s6e6-stellar-class.md
+│   ├── playground-s6e7-student-health-risk.md
+│   ├── playground-s6e8-smartphone-addiction.md
+│   ├── playground-s6e9-will-buy-ev.md
+│   ├── playground-s6e10-airline-satisfaction.md
+│   ├── rogii-wellbore-geology.md
+│   ├── cibmtr-post-hct-survival.md
+│   ├── march-ml-mania-2026.md
+│   └── neurips-open-polymer-2025.md
+├── reinforcement-learning/            # Multi-agent RL & simulation challenges
+│   ├── simulation-competition-starter.md # New-game workflow and agent kickoff prompt
+│   ├── kaggriculture.md               # 1st–28th Place solutions, BC/PPO, masks & solvers
+│   ├── orbit-wars.md                  # 1st–10th Place Orbit Wars: 200M Transformer, Rust, JAX, NF4
+│   ├── maze-crawler.md                # 1st Place Scored BFS Heuristics vs. 3rd Place Deep RL & JAX
+│   └── pokemon-tcg-playground.md      # 3rd Place Bo3 Pokémon TCG Token-Transformer & Seat Bug fix
 ├── cv/                                # Computer vision (Classification, Detection, Segmentation)
 │   ├── csiro-image2biomass.md         # Top 8 CSIRO Biomass: DINOv3 dense patch heads, UEPNet, TTT & SSA
 │   ├── recodai-scientific-image-forgery.md # Top Recod.ai Forgery: Panel+SupCon+Keypoint RANSAC vs 8-bit DINOv3-7B

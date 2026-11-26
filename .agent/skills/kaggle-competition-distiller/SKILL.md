@@ -33,7 +33,7 @@ Verify each dimension during analysis:
 ## 3. Output Generation & Universal Skill Promotion Bar
 
 ### A. Create Handbook Report (`Handbook/<track>/<competition-slug>.md`)
-Capture **all** competition details—including competition-specific data quirks, exact numbers, team standings, URLs, and negative results—inside the appropriate track folder (`tabular/`, `reinforcement-learning/`, `cv/`, `nlp/`, `time_series/`, `multimodal/`).
+Capture **all** competition details—including competition-specific data quirks, exact numbers, team standings, URLs, and negative results—inside the appropriate track folder (`tabular/`, `reinforcement-learning/`, `cv/`, `nlp/`, `time_series/`, `multimodal/`, `optimization/`).
 
 ### B. Update Catalog & Indexes
 Keep the short landing page and detailed catalogs synchronized:

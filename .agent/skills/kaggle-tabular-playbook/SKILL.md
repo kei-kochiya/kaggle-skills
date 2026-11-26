@@ -6,13 +6,13 @@ description: >-
 
 # Kaggle Tabular Competitions Playbook
 
-This skill provides a structured, high-performance workflow for competing in Kaggle tabular challenges (Playground Series and Featured competitions).
+A structured, universal workflow for competitive tabular machine learning across both **real-world Featured competitions** and **synthetic-generator benchmarks (e.g., Playground Series)**.
 
 ## Table of Contents
 1. [Core Philosophy & Phased Strategy](#1-core-philosophy--phased-strategy)
 2. [Phase 1: Setup & Leak-Free Cross-Validation](#2-phase-1-setup--leak-free-cross-validation)
-3. [Phase 2: Exploratory Data Forensics (DS & DA Playbook)](#3-phase-2-exploratory-data-forensics-ds--da-playbook)
-4. [Phase 3: Advanced Feature Engineering Recipes](#4-phase-3-advanced-feature-engineering-recipes)
+3. [Phase 2: Exploratory Data Forensics](#3-phase-2-exploratory-data-forensics)
+4. [Phase 3: Feature Engineering (Universal Core + Optional Synthetic Track)](#4-phase-3-feature-engineering-universal-core--optional-synthetic-track)
 5. [Phase 4: Multi-Model Zoo Execution](#5-phase-4-multi-model-zoo-execution)
 6. [Phase 5: Ensembling & Meta-Stacking Playbook](#6-phase-5-ensembling--meta-stacking-playbook)
 7. [References & Deep Dives](#7-references--deep-dives)
@@ -22,195 +22,137 @@ This skill provides a structured, high-performance workflow for competing in Kag
 ## 1. Core Philosophy & Phased Strategy
 
 Winning tabular competitions requires discipline in three pillars:
-- **Never Overfit the Leaderboard**: Build a local CV scheme that matches the test split exactly. Trust CV over Public LB.
-- **Extract Latent Data Generators**: Modern synthetic benchmarks (e.g. Playground Series) often contain underlying generative formulas or artifact discontinuities (rounding, modulo digits, periodic cycles).
-- **Stack Heterogeneous Predictions with Regularized Linear Models**: Avoid complex non-linear meta-learners. Use Centered Isotonic Regression (CIR) calibration followed by Ridge regression.
+- **Match Validation to Test Mechanics**: Lock a reproducible CV split matching grouping, time order, or stratification before engineering features. Trust nested CV over noisy Public LB deltas.
+- **Forensics Before Feature Engineering**: Diagnose data regime first—covariate shift, missingness structure, exact-value signal, domain physics equations, and whether a synthetic generator is present—before selecting transforms.
+- **Heterogeneous Diversity + Regularized Metric-Aligned Stacking**: Combine genuinely distinct model families (GBDTs, deep tabular NNs, linear/GAM, foundation models, generative/SSL transformers) with strongly regularized linear or metric-exact meta-learners rather than deep non-linear stackers.
 
 ---
 
 ## 2. Phase 1: Setup & Leak-Free Cross-Validation
 
-Always initialize a strict, reproducible out-of-fold scheme before touching feature engineering:
+Always lock a deterministic, shared fold assignment across all team members and model families:
 
 ```python
-from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.model_selection import GroupKFold, KFold, StratifiedKFold
 
-# Standard 5-fold KFold (Regression)
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
-
-# If grouping is present (e.g. user_id, hospital_id):
-# from sklearn.model_selection import GroupKFold
-# kf = GroupKFold(n_splits=5)
+# Classification: StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+# Regression:     KFold(n_splits=5, shuffle=True, random_state=42)
+# Grouped/Time:   GroupKFold(n_splits=5) or Leave-One-Group-Out / purged temporal splits
 ```
 
 > [!IMPORTANT]
-> Any transformation that computes statistics from the target variable (Target Encoding) or relies on distribution aggregations (Frequency Encoding on combined sets) **MUST** be computed strictly inside each training fold and applied to validation/test folds to prevent leakage.
+> Any target-dependent transform (Target Encoding, base-margin GLMs, isotonic calibration, pseudo-label teachers, or meta-stackers) **MUST** be fitted strictly inside inner training folds (nested CV) so validation rows never leak into their own features or calibration curves.
 
 ---
 
-## 3. Phase 2: Exploratory Data Forensics (DS & DA Playbook)
+## 3. Phase 2: Exploratory Data Forensics
 
-Refer to [`references/eda_data_forensics.md`](./references/eda_data_forensics.md) for the complete 7-pillar forensic methodology:
+Refer to [`references/eda_data_forensics.md`](./references/eda_data_forensics.md) and [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md):
 
 1. **Adversarial Validation (Train vs. Test Shift)**:
-   Train LightGBM to distinguish Train vs. Test. If $\text{ROC-AUC} > 0.65$, isolate and prune or neutralize the drifting features.
-2. **Synthetic vs. Original Data Forensics**:
-   Query original datasets via `cKDTree` to measure generator perturbation distance distributions and detect frequency oversampling ratios.
-3. **Bivariate Target Profiling & Step-Function Discovery**:
-   Discretize continuous variables into high-resolution quantile bins and plot empirical target rates with 95% Wilson confidence intervals to uncover non-linear thresholds.
-4. **Mantissa, Rounding & Benford's Law Forensics**:
-   Audit decimal fractions (`frac = x - floor(x)`) and leading-digit distributions to detect synthetic rounding artifacts.
-5. **Domain Equation Residual Auditing**:
-   Calculate residuals $e = y_{\text{domain}} - f(X)$ (e.g. $\text{TotalCharges} - \text{tenure} \times \text{MonthlyCharges}$). Correlate residuals with the target to isolate hidden business signals.
-6. **Categorical Interaction Screening**:
-   Screen pairwise and three-way combinations via Chi-square contingency table divergence to isolate the highest-signal cross-features.
-7. **Synthetic Formula Discovery**:
-   Fit an unregularized Linear Regression or OLS to recover additive linear formula offsets across discrete categories.
-8. **Cross-Fitted Field Reconstruction & Exact-Value Auditing**:
-   Check whether repeated continuous/integer values carry distinct latent rates and inspect column-to-column reconstruction residuals ($x_j - \hat{x}_j$) via cross-fitted Autoencoders/GBDTs or MLM density uncertainty (`mfill`, `qfill`). See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
+   Run cross-validated LightGBM classifying Train vs. Test. If OOF $\text{ROC-AUC} > 0.65$, inspect per-feature adversarial AUC to isolate drifting columns (or missingness-driven drift) and test drift-pruned model streams.
+2. **Exact-Value & Bivariate Target Profiling**:
+   Discretize continuous columns into quantile bins with 95% Wilson CIs to spot step-functions and non-monotonic anomalies (e.g., `0` meaning bypassed/N/A). Run a **split-half exact-value residual correlation test** to verify whether repeated numeric values carry distinct latent signal.
+3. **Domain Equation Residual Auditing**:
+   Test physical/accounting relationships $e = y_{\text{derived}} - f(X)$ and inspect whether residuals correlate strongly with the target.
+4. **Missingness & Reconstruction Forensics**:
+   Check whether `NaN` patterns carry predictive signal (never blindly pre-impute for GBDTs!) and audit column-to-column cross-fitted reconstruction residuals ($x_j - \hat{x}_j$).
+5. **Categorical Interaction Screening**:
+   Screen pairwise and 3-way categorical combinations via Chi-square divergence or mutual information to prioritize high-signal crosses.
+6. **Synthetic-Generator Detection (When Applicable)**:
+   Check if an original seed dataset exists, test nearest-neighbor distance distributions (`cKDTree`), decimal mantissa / Benford anomalies, exact-value duplication rate, and additive linear formula fit to determine whether synthetic-generator tricks apply. *(Skip generator-artifact features when forensics show smooth continuous real-world data!)*
 
 ---
 
-## 4. Phase 3: Advanced Feature Engineering Recipes
+## 4. Phase 3: Feature Engineering (Universal Core + Optional Synthetic Track)
 
-Refer to detailed guides in [`references/feature_engineering.md`](./references/feature_engineering.md):
+Refer to [`references/feature_engineering.md`](./references/feature_engineering.md) and [`references/oof_target_encoding.md`](./references/oof_target_encoding.md).
 
-1. **Synthetic Snap Matching & Perturbation Diff**:
-   Map synthetic floats to nearest original dataset values via `np.searchsorted` to recover the true manifold coordinates and measure generator noise:
-   $$x_{\text{snap}} = \text{argmin}_{v \in V_{\text{orig}}} |x - v|, \quad x_{\text{snap\_diff}} = x - x_{\text{snap}}$$
-2. **Radix Continuous-Categorical Split Encoding**:
-   Combine continuous snap features and categorical codes into a single integer so tree models perform joint splits:
-   $$\text{radix} = \lfloor x_{\text{snap}} \cdot 100 \rfloor + \text{cat\_code} \cdot 100{,}000$$
-3. **cKDTree Nearest-Neighbor Ground-Truth Prior**:
-   Query a spatial `cKDTree` on standardized original dataset features to attach the nearest true label as a zero-leakage feature.
-4. **Modulo Digit Decomposition & Mantissa Residuals**:
-   Expose rounding artifacts to tree and neural models via base-10 mantissas and fractional residuals from common denominators ($1/2, 1/4, 1/5, 1/10$).
-5. **Trigonometric / Periodic Features**:
-   Continuous variables with cyclic patterns benefit from harmonic embeddings ($p \in \{12, 14, 20\}$).
-6. **Multi-Aggregation OOF Target Encoding**:
-   Compute `mean`, `std`, and `skew` with Empirical Bayes smoothing. See [`references/oof_target_encoding.md`](./references/oof_target_encoding.md).
-7. **Multi-Granularity Target Encoding Pyramids**:
-   Never encode continuous columns at one scale. Build a 4-tier quantization pyramid (raw, rounded to 100, rounded to 1,000, quantile bins) inside nested OOF.
-8. **Offline Original Data Feature Lookup Prior (Zero-Leak)**:
-   Avoid stacking original dataset rows directly into training data (which hurts GBDTs due to distribution drift). Instead, build static target-mean lookup tables (`orig_rate__*`) from original data to inject pure prior signal without leakage.
-9. **BPE Subword Token Group Encodings on Numerical Strings**:
-   Tokenize integer strings with GPT-2 BPE (`tiktoken`) to exploit synthesizer token-boundary artifacts. Target-encode token prefix/length categories.
-10. **Fold-Safe Semi-Supervised Exact-Value EM & Context-Shape Residuals**:
-    When discrete numeric keys repeat across `train + test`, pool labeled outer-train counts with unlabeled (`val + test`) rows weighted by a value-blind context teacher inside each fold (`w_unlab` $\in \{0.25, 1, 4\}$). See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
-11. **Multi-Resolution TE Regularization (`noise` + `feature_weights`)**:
-    When feeding dense multi-scale TE banks into GBDTs, inject zero-mean Gaussian noise (`sd = 0.04`) strictly onto training rows and pass differential column sampling `feature_weights` (`1.0` raw, `0.6` base TE, `0.2` multires, `0.05` diffs) to prevent tree split overfitting.
+### A. Universal Tabular Core (Applies to All Datasets)
+1. **Multi-Aggregation OOF Target Encoding**:
+   Compute `mean`, `std`, and `skew` strictly out-of-fold with consistent Empirical Bayes smoothing on both train (`fit_transform`) and test (`transform`).
+2. **Scale-Adaptive Multi-Granularity TE Pyramids**:
+   Encode high-signal numeric columns across coarse-to-fine scales (exact value, magnitude-adaptive rounded clusters, quantile bins) inside nested folds.
+3. **Multi-Scale Binning & Combinatorial Interactions**:
+   Combine quantile (`qcut`), uniform (`cut`), and domain-meaningful bins with frequency-filtered pairwise categorical crosses.
+4. **External / Original Data Transfer (Ablate Both Modes on CV)**:
+   - **Mode 1 — Static Zero-Leak Lookup Priors (`orig_rate__*`)**: Map target statistics from external/original data as features. Often strictly superior when original and competition label-noise processes differ.
+   - **Mode 2 — Synchronous Sample-Weighted Row Appending**: Concatenate external/original training folds with tuned sample weights (`w = 0.25–1.25`), evaluating CV **strictly on unmodified host validation rows**.
+   - *Rule*: Never assume one mode dominates universally—ablate both on honest CV.
+5. **Multi-Resolution TE Regularization (`noise` + `feature_weights`)**:
+   When feeding dense multi-scale TE banks into GBDTs, inject mild zero-mean Gaussian noise strictly on training folds and pass differential `feature_weights` (higher on raw features, lower on derived TE diffs) to curb split overfitting.
+
+### B. Optional: Synthetic-Generator / Playground Track *(Activate Only After Forensics Confirm)*
+1. **Snap Matching & Perturbation Diff**: Map synthetic floats to nearest original seed values via `np.searchsorted` ($x_{\text{snap}}$ and $x - x_{\text{snap}}$).
+2. **Radix Joint Split Encoding**: Pack quantized continuous + categorical code into one integer so trees split jointly.
+3. **cKDTree Original-Seed Prior**: Query standardized original seed rows to attach nearest-neighbor historical label and distance.
+4. **Modulo Digit / Mantissa Residuals & Data-Driven Harmonics**: Extract base-10 digits, fractional residuals against common denominators ($1/2, 1/4, 1/5, 1/10$), and periodic `sin`/`cos` bases only at frequencies confirmed by FFT/EDA.
+5. **BPE Subword Token Encodings on Numeric Strings**: Tokenize integer strings with GPT-2 BPE when forensics confirm LLM/GReaT synthesis artifacts.
+6. **Fold-Safe Semi-Supervised Exact-Value EM**: Pool outer-train counts with value-blind context-teacher weighted unlabeled rows when exact numeric keys repeat across `train + test`. See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
 
 ---
 
 ## 5. Phase 4: Multi-Model Zoo Execution
 
-Never rely on a single model family. Train diverse model classes on the exact same folds:
+Train heterogeneous model families on the **exact same saved fold indices**:
 
 1. **Tree Ensembles**:
-   - **LightGBM**: Leaf-wise growth, fast, handles count-ratio and multi-scale quantile bins.
-   - **XGBoost**: Depth-wise splits, supports `XGBRanker` pairwise ranking objective (`rank:pairwise`).
-   - **CatBoost**: Native Ordered Target Statistics (OTS) for high-order categorical interactions.
-   - **YDF (Yggdrasil Decision Forests)**: Ultra-shallow stumps (`max_depth=2`) for smooth regularization.
-   - **cuML Random Forest**: GPU-accelerated bagging tree model for orthogonal variance reduction.
+   - **LightGBM** (leaf-wise, GOSS, DART), **XGBoost** (depth-wise, `XGBRanker` pairwise ranking), **CatBoost** (native Ordered Target Statistics), **YDF** (shallow stumps), and **cuML / sklearn Random Forest** (bagging diversity).
 2. **Deep Tabular Neural Networks**:
-   - **RealMLP (`pytabkit`)**: State-of-the-art tabular MLP utilizing Piecewise Linear Representations (PLR), cosine log learning rate scheduling, and SiLU/Mish activations.
-   - **TabM**: Bilinear multi-component interaction architecture ($k=32$ basis components).
-   - **GraphSAGE GNN / TALENT Zoo**: KNN graph embeddings built on GPU via cuML KNN, plus `ExcelFormer`, `AMFormer`, `TabR`, `Trompt`, `ModernNCA`, `FT-Transformer`, `GANDALF`, `DeepFM`, `SNN (SELU)`.
-3. **Tabular LLMs, Generative Transformers & Foundation Models**:
-   - **Target-First ("Storyteller") & Target-Last ("Detective") GPT-2 Classifiers**: Fine-tune a 60-epoch GReaT replica (`original_df` only) on `"col is val"` rows, scoring via 30-order `logsumexp` Bayes LLR (`Storyteller`) or single-pass label readout (`Detective`).
-   - **Any-Order / Bagged Generative Transformers (`AO-ARM`, `GenPure`)**: Train from-scratch column/value transformers across random column orders (without early stopping, e.g., 36 epochs) and seed-bag Bayes log-odds.
-   - **Self-Supervised Feature-Token Transformers (`Q-FT v2`, RTD Encoders)**: Pretrain order-free `ModernBERT` / QK-norm transformers with Masked-Token Reconstruction and Hard-Negative Replaced-Token Detection (RTD) on `train + test` before 5-fold fine-tuning.
-   - **Replica-World Source Pretraining**: Pretrain field transformers / BatchEnsemble MLPs on 1M+ synthetic rows sampled from noised original-data GReaT replicas before fold fine-tuning.
-   - **Zero-Shot Full-Context TFM Zoo**: `TabPFN-3.5` (declare high-cardinality physical IDs as categorical), `Kumo-Tabular`, `TabFM`, `EXAONE`, `LimiX-2`, `Causilo`, `TabICLv2`, `Mitra-v2`. See [`references/tabular_llms_generative_transformers.md`](./references/tabular_llms_generative_transformers.md).
-4. **Group-Wise Subgroup Partitioning**:
-   - Train dedicated models on isolated categorical slices (e.g. `City Type` $\times$ `Car Type`, `Age Group`). While individually weaker, their error residuals are completely decorrelated from global models, providing consistent lift inside the meta-stack. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
-5. **Continuous Soft Pseudo-Label Distillation**:
-   - Never use hard binary pseudo-labels ($0/1$). Train student models on continuous teacher probabilities ($p \in (0, 1)$) with sample weight $w=2$ using teachers whose training strictly excluded the validation fold. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
+   - **RealMLP (`pytabkit`)** (Piecewise Linear Representations + SiLU/Mish), **TabM** (batch-ensemble multi-head MLP), **FT-Transformer**, **GraphSAGE / KNN-GNN**, **DAE / Masked Density Transformer**, **DeepFM**, **ModernNCA**, **ExcelFormer**, **Trompt**.
+3. **Tabular Foundation Models, SSL & Generative Transformers**:
+   - **Full-Context Zero-Shot / Fine-Tuned TFMs**: `TabPFN`, `TabICL`, `Kumo`, `TabFM`, `Mitra` (declare high-cardinality discrete IDs as categorical; never pass cross-validated OOFs into in-context attention!).
+   - **Self-Supervised Feature-Token Transformers (Universal)**: Pretrain order-free column-token transformers via Masked-Token Reconstruction + Hard-Negative Replaced-Token Detection (RTD) on `train + test` before fold fine-tuning.
+   - **Generative Bayes Transformers (`Storyteller` / `AO-ARM` / `GenPure`)**: Score $P(\mathbf{x} \mid y)$ across random column permutations via `logsumexp` Bayes LLR (especially dominant on GReaT/LLM-synthesized or discrete-table regimes). See [`references/tabular_llms_generative_transformers.md`](./references/tabular_llms_generative_transformers.md).
+4. **Continuous Residual Margin Boosting (`init_score` / `base_margin`)**:
+   - Fit nested OOF regularized GLM/GAM/LR log-odds and initialize GBDTs from those margins so trees model strictly non-linear interaction residuals. See [`references/glm_residual_base_margin.md`](./references/glm_residual_base_margin.md).
+5. **Group-Wise Subgroup Models & Continuous Soft Pseudo-Labeling**:
+   - Train isolated subgroup models on high-level categorical slices for decorrelated stack residuals, and prefer **continuous fold-isolated soft teacher probabilities** (never hard `{0, 1}` thresholds) when pseudo-labeling improves CV. See [`references/soft_pseudolabel_distillation.md`](./references/soft_pseudolabel_distillation.md).
 
-Save both **Out-Of-Fold (OOF)** predictions on the training set and **Test** predictions for each model:
-`models/model_name_oof.npy` (or `.csv`) and `models/model_name_test.npy`.
+Save paired OOF and Test arrays (`models/<name>_oof.npy`, `models/<name>_test.npy`) verified against a shared fold hash.
 
 ---
 
 ## 6. Phase 5: Ensembling & Meta-Stacking Playbook
 
-Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md) for full implementations.
+Refer to [`references/stacking_cir_ridge.md`](./references/stacking_cir_ridge.md) and [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
 
 ### Track A: Continuous Regression (RMSE / MAE)
-1. **Monotonic Calibration via Centered Isotonic Regression (CIR)**:
-   Calibrate every model's OOF and Test predictions individually before stacking.
-2. **Ridge Regression Stacker**:
-   Fit an $L_2$-regularized `RidgeCV(alphas=[1.0, 10.0, 100.0])` on calibrated OOF predictions.
-3. **Secondary CIR Post-Processing**:
-   Fit a final CIR model on the Ridge meta-predictions against ground truth.
+1. **Nested OOF Centered Isotonic Regression (CIR) + Ridge Stacking**: Fit per-model CIR inside CV folds, combine via $L_2$-regularized `RidgeCV`, and validate any post-stack CIR strictly out-of-fold.
+2. **MAE-Specific Post-Processing**: Test median TTA/aggregation and simple OOF affine bias calibration (`y_cal = a·y + b`).
 
 ### Track B: Binary Classification (ROC-AUC / LogLoss)
-1. **Spearman Diversity Screening ($\rho \le 0.998$)**:
-   Before adding any model to an existing blend, compute its Spearman rank correlation $\rho$. If $\rho > 0.998$, reject as collinear/redundant. Only sweep weights on diverse candidates ($\rho \le 0.998$).
-2. **Inductive Bias Pairing (Neural Networks + Trees)**:
-   Tree ensembles (LightGBM, CatBoost, XGBoost) share axis-aligned step-cut inductive biases and saturate. Pair them with continuous manifold models (PyTorch RealMLP, TabM) at 10%–20% weight to cancel tree boundary artifacts.
-3. **Avoid the Candidate Pooling Fallacy**:
-   Never average multiple diverse candidates into an unweighted pool before blending—averaging cancels their individual disagreements and drives correlation to $>0.999$. Blend diverse candidates individually or via regularized Ridge/Logistic regression.
-4. **Plateau Center-Selection**:
-   When sweeping candidate weights across a flat score plateau (e.g. 10%, 15%, 20% all tie), always choose the center of the plateau (15%) rather than the edge to maximize safety against private leaderboard distribution shifts.
-5. **Greedy Forward Hill Climbing**:
-   Filter redundant models by greedily accumulating models that improve honest OOF AUC.
-6. **Fold-Wise Ordinal Rank Probability Calibration**:
-   Map OOF predictions within each fold to common quantile ranks and replace with empirical rank means.
-7. **Logit-Space Transform**:
-   $$z = \text{clip}\left(\ln \frac{p}{1 - p}, -30.0, 30.0\right)$$
-8. **$L_2$-Regularized Logistic Regression Meta-Learner**:
-   Fit an $L_2$ Logistic Regression (`C=1.0` or `C=0.01`, `class_weight=None` to preserve rank ordering) on the logit features.
-9. **Percentile Rank Averaging Across Ensemblers**:
-   When combining ensemblers operating on different probability scales (e.g. Logit Stacker calibrated at base rate $~0.20$ vs. Hill Climbing compressed around $0.50$), convert predictions to empirical uniform percentiles via `rankdata(p) / len(p)` before weighted averaging.
-10. **Synchronous Fold Concatenation & Drift Pruning**:
-   Safely inject original/external datasets by splitting synchronously into $K$ Stratified folds and evaluating solely on synthetic validation splits. Branch parallel models omitting features with high adversarial drift ($\text{AUC} > 0.65$, e.g. `Driver`).
-11. **Continuous Residual Margin Boosting (`init_score` / `base_margin`)**:
-   Instead of blending linear models and GBDTs post-hoc, train LightGBM (`init_score=m_logit`) and XGBoost (`base_margin=m_logit`) directly on the continuous logit predictions of an $L_2$-regularized linear model. This forces decision trees to model strictly the non-linear interaction residuals rather than slicing smooth continuous relationships.
-12. **Riemannian Hypersphere ($\mathbb{S}^{N-1}$) Fréchet Barycenter**:
-   When blending top-tier models, standard Euclidean rank averaging causes norm shrinkage $\|\bar{\mathbf{z}}\|_2 < \sum w_k \|\mathbf{z}_k\|_2$, compressing the discriminative spread of extreme tail probabilities. Project probit-transformed ranks to the unit hypersphere $\mathbb{S}^{N-1}$ and compute the intrinsic geodesic center of mass (Fréchet barycenter) via iterative Riemannian gradient descent in the tangent space.
-13. **Deterministic Generator Boundary Invariants**:
-   In synthetic datasets (e.g. CTGAN), audit data for generator memory leaks and hard physical boundaries where positive rate is strictly $0.0$ or $1.0$ with zero exceptions. Override predictions on these deterministic rows with extreme ranks ($\pm \infty$) prior to ranking to capture free metric lift (+0.00015+ AUC).
-14. **Zero-Tie Lexicographical Ranking (`lexrank`)**:
-   ROC-AUC penalizes tied prediction probabilities by awarding only $0.5$ concordance. Never output discrete, rounded, or clipped probabilities. Break all potential ties using an independent continuous secondary predictor (e.g., deep tabular neural net PyTorch RealMLP) via `np.lexsort((secondary, primary))` to guarantee strictly $N$ unique values in $(0, 1)$.
-15. **AUC-Direct Ensembling via Histogram FFT Convolution**:
-   Instead of fitting meta-learners on log-loss or squared error, directly optimize the smooth pairwise ROC-AUC ranking surrogate over all $n_+ \times n_-$ pairs:
-   $$\min_{w \ge 0,\ \sum_k w_k = 1} L(w) = \frac{1}{n_+ n_-} \sum_{i \in \text{pos}} \sum_{j \in \text{neg}} \sigma\left( -\frac{s_i - s_j}{\tau} \right), \quad s = Xw, \quad \tau = 0.1$$
-   Bypasses Monte Carlo subsampling by constructing linear-interpolation histograms of positive and negative scores on a high-resolution grid and evaluating the all-pairs loss in $O(n + N \log N)$ via `scipy.signal.fftconvolve`.
-16. **Full-Context Tabular Transformers (TabPFN-3.5) & The Context Law**:
-   Modern tabular foundation models (TabPFN-3.5) scale to hundreds of thousands of in-context rows (`fit_mode='fit_with_cache'`, `ignore_pretraining_limits=True`). OOF performance scales log-linearly (+18.6u per doubling of context) without saturating. *Critical Guardrail:* Never pass cross-validated model OOFs to in-context attention models, as cross-attention to neighboring rows with ground-truth leaks leaks labels.
-17. **Generator-Surrogate Language Model Features (LLR)**:
-    In synthetic datasets generated from an original reference dataset, fine-tune a language model (e.g. `distilgpt2`) strictly on original data with zero competition labels seen. Compute the Log-Likelihood Ratio $\text{LLR} = \log p(\mathbf{x} \mid y=1) - \log p(\mathbf{x} \mid y=0)$ across random column orders as an informative prior for neural models and linear margin initializers.
-18. **The Stacking Solver Convergence Law (`tol=1e-8`)**:
-    When meta-stacking 50+ prediction columns via Logistic Regression, default `tol=1e-4` stops prematurely on the flattened log-loss surface. Setting `tol=1e-8` and `max_iter=2000` is mandatory to avoid suboptimal weights. See [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
-19. **Shake-Up Defense: The Clark (1961) Final Hedging Law**:
-    Under the exact expected value of the maximum of two correlated normals, a second submission correlated with your best at $\rho > 0.99$ is **statistically inert** against private shake-up. A valid hedge must simultaneously satisfy $\rho \le 0.98$ and distance $\Delta < 2.0\sigma$. See [`references/logit_stacking_rank_blend.md`](./references/logit_stacking_rank_blend.md).
-20. **Feature-Ablation Contrast Carriers (`real - zero` Chains & Cross-Family Contrasts)**:
-    When standard models correlate at $\rho > 0.99$, train matched-seed pairs (`real` vs `zero` feature block) and feed $z_{\text{next}} = z_{\text{base}} + \alpha(\bar{z}_{\text{real}} - \bar{z}_{\text{zero}})$ or cross-family contrasts into regularized linear stackers to expose pure marginal signal. See [`references/advanced_forensics_contrasts_em.md`](./references/advanced_forensics_contrasts_em.md).
-21. **Label-Free Per-Fold Test-Distribution Logit Alignment**:
-    Before averaging $K$-fold logits or feeding them to a stacker, align each fold's OOF and Test logits using that fold's own unlabeled test mean and std (`scale * (z - mu_test) / sd_test`).
+1. **Diversity-First Screening**: Audit pairwise Spearman correlation $\rho$ against the current blend; prioritize orthogonal model families (e.g., neural manifolds + GBDTs + TFMs) over near-duplicate tree twins, and avoid pre-pooling diverse models into an unweighted average before stacking (**Candidate Pooling Fallacy**).
+2. **Fold Alignment & Logit-Space Stacking**:
+   - Align per-fold calibration drift via fold-wise ordinal rank calibration or **label-free per-fold test-distribution logit standardization** (`scale * (z - mu_test) / sd_test`).
+   - Clip probabilities safely, map to logits $z = \text{clip}(\ln(p / (1-p)), -30, 30)$, and fit $L_2$-regularized Logistic Regression (`class_weight=None` for AUC, tight solver tolerance **`tol=1e-8`**, `max_iter=2000`) inside nested CV.
+3. **Metric-Exact Rank & Geometric Blenders (ROC-AUC)**:
+   - **Percentile Rank Averaging**: Use `rankdata(p) / len(p)` when combining meta-learners operating on different probability scales.
+   - **AUC-Direct FFT Blending**: Optimize the smooth all-pairs WMW sigmoid loss in $O(n + N \log N)$ via [`references/auc_direct_fft_blend.md`](./references/auc_direct_fft_blend.md).
+   - **Riemannian $\mathbb{S}^{N-1}$ Fréchet Barycenter & Zero-Tie `lexrank`**: Avoid Euclidean tail shrinkage on hypersphere probit vectors and break ties via an independent continuous predictor (`np.lexsort`). See [`references/riemannian_hypersphere_frechet_blend.md`](./references/riemannian_hypersphere_frechet_blend.md).
+4. **CV Stability & Shakeup Hedging**:
+   - **CV Plateau Center-Selection**: When nested-CV weight sweeps flatten across an interval, choose the center of the plateau rather than an edge.
+   - **Feature-Ablation Contrast Carriers**: Feed matched-seed `real - zero` or cross-family contrasts into regularized linear stackers when raw models saturate at high correlation.
+   - **Clark (1961) Final Hedging Law**: When picking two final submissions, verify that the hedge satisfies both sufficient decorrelation ($\rho \le 0.98$) and competitive CV proximity ($\Delta < 2.0\sigma$).
 
-### Track C: Imbalanced Multiclass & Balanced Accuracy
+### Track C: Imbalanced Multiclass & Specialized Tabular Regimes
 1. **Balanced-Accuracy Mathematical Duality (Never Double-Correct!)**: Class-weighted log-loss ($w_c = 1/(K\cdot\pi_c)$) and unweighted calibrated probabilities divided by priors (`argmax(p / π_c)`) share the exact Bayes rule. Combine weighted GBDTs + prior-divided NNs, **never apply both to the same model** (`-0.04` to `-0.06` drop!), and strip base PP before meta-stacking.
-2. **Ordinal + OvR Pairwise Rankers & Hierarchical Binary Cascades**: Pair ordinal/OvR `XGBRanker` and 2-stage hierarchical cascades (`Low vs Rest → Med vs High` when extremes never confuse) with a **Class-Weighted GPU Multinomial Logit Stacker**.
+2. **Ordinal + OvR Pairwise Rankers & Hierarchical Binary Cascades**: Pair ordinal/OvR `XGBRanker` and 2-stage hierarchical cascades with a **Class-Weighted GPU Multinomial Logit Stacker**.
 3. **Specialized Tabular Regimes**: See [`references/specialized_tabular_regimes.md`](./references/specialized_tabular_regimes.md) for **split-half exact-value diagnostics & `float32` vocab safety**, **target-free Masked Density Transformer distributional imputation**, **factorized two-task survival modeling (`P(event)` + `E[rank(-t)|event=1]`)**, **pairwise matchup symmetry & graph ratings**, **dirty external-data 5-step pipelines & dense→sparse chaining**, and **heavy-tail `k*` validation**.
 
 ---
 
 ## 7. References & Deep Dives
 - [Specialized Tabular Regimes (Balanced Acc, Imputation, Survival, Matchups, External Data & `k*`)](./references/specialized_tabular_regimes.md)
-- [GLM / Linear Residual Base Margin Boosting](./references/glm_residual_base_margin.md)
-- [Soft Pseudo-Label Distillation & Group-Wise Partitions](./references/soft_pseudolabel_distillation.md)
 - [Exploratory Data Forensics (DS & DA Playbook)](./references/eda_data_forensics.md)
 - [Feature Engineering Toolkit](./references/feature_engineering.md)
 - [Leak-Free Multi-Agg Target Encoding](./references/oof_target_encoding.md)
+- [GLM / Linear Residual Base Margin Boosting](./references/glm_residual_base_margin.md)
+- [Soft Pseudo-Label Distillation & Group-Wise Partitions](./references/soft_pseudolabel_distillation.md)
 - [CIR Calibration, Logit Stacking & Hill Climbing](./references/stacking_cir_ridge.md)
 - [Logit Stacking, Rank Averaging & Synchronous Fold Protocol](./references/logit_stacking_rank_blend.md)
 - [Riemannian Hypersphere Fréchet Ensembling & Boundary Rules](./references/riemannian_hypersphere_frechet_blend.md)
-- [AUC-Direct FFT Ensembling & Foundation Transformers](./references/auc_direct_fft_blend.md)
+- [AUC-Direct FFT Ensembling & Full-Context TFM Guardrails](./references/auc_direct_fft_blend.md)
 - [Tabular LLMs, Generative Transformers & Foundation Models](./references/tabular_llms_generative_transformers.md)
 - [Advanced Forensics, Contrast Carriers & Semi-Supervised EM](./references/advanced_forensics_contrasts_em.md)
 - [Autonomous Multi-LLM Competitive Workflow](../../../Handbook/workflows/llm-agentic-kaggle-workflow.md)
-
-
-

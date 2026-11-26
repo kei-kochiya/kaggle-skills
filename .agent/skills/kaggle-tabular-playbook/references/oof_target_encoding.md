@@ -1,110 +1,104 @@
 # Out-Of-Fold Multi-Aggregation Target Encoding
 
-Standard target encoding calculates category-level means and can lead to severe leakage if not strictly evaluated out-of-fold. This reference provides an industrial-grade, leak-free Target Encoder with higher-order moments (`mean`, `std`, `skew`) and Empirical Bayes smoothing.
+Standard target encoding computes raw category means, leaking target labels if applied in-sample and overfitting rare categories if unsmoothed. This recipe provides a leak-free out-of-fold Target Encoder with higher-order moments (`mean`, `std`, `skew`) and **consistent Empirical Bayes smoothing across both `fit_transform()` (train OOF) and `transform()` (test)**.
 
 ---
 
 ## 1. Empirical Bayes Smoothing Formula
 
-For categorical group $c$ with sample count $n$ and sample target mean $\bar{y}_c$, the smoothed target mean is:
-
-$$\hat{y}_{\text{smooth}} = \frac{n \cdot \bar{y}_c + m \cdot \mu_{\text{global}}}{n + m}$$
-
-Where the smoothing parameter $m$ is automatically determined via Empirical Bayes shrinkage:
-
-$$m = \frac{\sigma^2_{\text{within}}}{\sigma^2_{\text{between}}}$$
-
-- $\sigma^2_{\text{within}}$ is the average variance of the target within category groups.
-- $\sigma^2_{\text{between}}$ is the variance between category group means.
+For category $c$ with count $n$ and sample mean $\bar{y}_c$, the smoothed target mean is:
+$$\hat{y}_{\text{smooth}} = \frac{n \cdot \bar{y}_c + m \cdot \mu_{\text{global}}}{n + m}, \qquad m = \frac{\sigma^2_{\text{within}}}{\sigma^2_{\text{between}}}$$
+where $\sigma^2_{\text{within}}$ is the average within-category target variance and $\sigma^2_{\text{between}}$ is the variance across category means.
 
 ---
 
 ## 2. Complete Python Implementation
 
 ```python
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import KFold
 
-class TargetEncoder_(BaseEstimator, TransformerMixin):
+
+class MultiAggTargetEncoder(BaseEstimator, TransformerMixin):
     """
-    Leak-free out-of-fold target encoder supporting multiple aggregation functions
-    (mean, std, skew, median) with Empirical Bayes smoothing.
+    Leak-free out-of-fold target encoder supporting multiple aggregations
+    (e.g., mean, std, skew) with identical Empirical Bayes smoothing on both
+    training OOF (fit_transform) and inference (transform).
     """
-    def __init__(self, cols_to_encode, aggs=['mean', 'std', 'skew'], cv=5, smooth='auto', drop_original=False):
-        self.cols_to_encode = cols_to_encode
-        self.aggs = aggs
+
+    def __init__(self, cols_to_encode, aggs=("mean", "std", "skew"), cv=5, smooth="auto", drop_original=False):
+        self.cols_to_encode = list(cols_to_encode)
+        self.aggs = tuple(aggs)
         self.cv = cv
         self.smooth = smooth
         self.drop_original = drop_original
         self.mappings_ = {}
         self.global_stats_ = {}
 
-    def fit(self, X, y):
-        temp_df = X.copy()
-        temp_df['target'] = y
+    def _compute_mapping(self, df_with_target: pd.DataFrame, col: str, agg_func: str, global_val: float):
+        grouped = df_with_target.groupby(col, observed=False)["target"]
+        mapping = grouped.agg(agg_func)
+        if agg_func != "mean":
+            return mapping
 
-        for agg_func in self.aggs:
-            self.global_stats_[agg_func] = y.agg(agg_func)
+        counts = grouped.count()
+        if self.smooth == "auto":
+            var_between = float(mapping.var())
+            var_within = float(grouped.var().mean())
+            m = (var_within / var_between) if (np.isfinite(var_between) and var_between > 0 and np.isfinite(var_within)) else 0.0
+        else:
+            m = float(self.smooth)
+        return (counts * mapping + m * global_val) / (counts + m)
 
+    def fit(self, X: pd.DataFrame, y: pd.Series):
+        temp_df = X[self.cols_to_encode].copy()
+        temp_df["target"] = np.asarray(y)
+        y_series = temp_df["target"]
+
+        self.global_stats_ = {agg: float(y_series.agg(agg)) for agg in self.aggs}
+        self.mappings_ = {}
         for col in self.cols_to_encode:
-            self.mappings_[col] = {}
-            for agg_func in self.aggs:
-                mapping = temp_df.groupby(col)['target'].agg(agg_func)
-                self.mappings_[col][agg_func] = mapping
-
+            self.mappings_[col] = {
+                agg: self._compute_mapping(temp_df, col, agg, self.global_stats_[agg])
+                for agg in self.aggs
+            }
         return self
 
-    def transform(self, X):
-        X_transformed = X.copy()
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X_out = X.copy()
         for col in self.cols_to_encode:
-            for agg_func in self.aggs:
-                new_col = f'TE_{col}_{agg_func}'
-                mapping = self.mappings_[col][agg_func]
-                X_transformed[new_col] = X[col].map(mapping).fillna(self.global_stats_[agg_func])
+            for agg in self.aggs:
+                new_col = f"TE_{col}_{agg}"
+                X_out[new_col] = X[col].map(self.mappings_[col][agg]).fillna(self.global_stats_[agg]).astype("float32")
 
         if self.drop_original:
-            X_transformed.drop(columns=self.cols_to_encode, inplace=True)
-        return X_transformed
+            X_out = X_out.drop(columns=self.cols_to_encode)
+        return X_out
 
-    def fit_transform(self, X, y):
+    def fit_transform(self, X: pd.DataFrame, y: pd.Series) -> pd.DataFrame:
         self.fit(X, y)
-        encoded_features = pd.DataFrame(index=X.index)
+        encoded = pd.DataFrame(index=X.index)
         kf = KFold(n_splits=self.cv, shuffle=True, random_state=42)
+        y_arr = np.asarray(y)
 
-        for train_idx, val_idx in kf.split(X, y):
-            X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
+        for train_idx, val_idx in kf.split(X, y_arr):
+            temp_tr = X.iloc[train_idx][self.cols_to_encode].copy()
+            temp_tr["target"] = y_arr[train_idx]
             X_val = X.iloc[val_idx]
-            temp_df_train = X_train.copy()
-            temp_df_train['target'] = y_train
 
             for col in self.cols_to_encode:
-                for agg_func in self.aggs:
-                    new_col = f'TE_{col}_{agg_func}'
-                    fold_global = y_train.agg(agg_func)
-                    mapping = temp_df_train.groupby(col)['target'].agg(agg_func)
+                for agg in self.aggs:
+                    new_col = f"TE_{col}_{agg}"
+                    fold_global = float(temp_tr["target"].agg(agg))
+                    mapping = self._compute_mapping(temp_tr, col, agg, fold_global)
+                    encoded.loc[X_val.index, new_col] = X_val[col].map(mapping).fillna(fold_global).astype("float32")
 
-                    if agg_func == 'mean':
-                        counts = temp_df_train.groupby(col)['target'].count()
-                        if self.smooth == 'auto':
-                            var_between = mapping.var()
-                            var_within = temp_df_train.groupby(col)['target'].var().mean()
-                            m = (var_within / var_between) if var_between > 0 else 0
-                        else:
-                            m = self.smooth
-                        smoothed_mapping = (counts * mapping + m * fold_global) / (counts + m)
-                        encoded_values = X_val[col].map(smoothed_mapping)
-                    else:
-                        encoded_values = X_val[col].map(mapping)
-
-                    encoded_features.loc[X_val.index, new_col] = encoded_values.fillna(fold_global)
-
-        X_transformed = X.copy()
-        for col in encoded_features.columns:
-            X_transformed[col] = encoded_features[col]
-
+        X_out = X.copy()
+        for col in encoded.columns:
+            X_out[col] = encoded[col]
         if self.drop_original:
-            X_transformed.drop(columns=self.cols_to_encode, inplace=True)
-        return X_transformed
+            X_out = X_out.drop(columns=self.cols_to_encode)
+        return X_out
 ```
